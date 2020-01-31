@@ -1,0 +1,33 @@
+#include "include\version.h"
+#include <winres.h>
+
+1 VERSIONINFO
+ FILEVERSION MOREHOTKEYS_VERSION_MAJOR, MOREHOTKEYS_VERSION_MINOR, MOREHOTKEYS_VERSION_PATCH, MOREHOTKEYS_VERSION_BETA
+ PRODUCTVERSION MOREHOTKEYS_VERSION_MAJOR, MOREHOTKEYS_VERSION_MINOR, MOREHOTKEYS_VERSION_PATCH, MOREHOTKEYS_VERSION_BETA
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "MoreHotkeys"
+			VALUE "FileVersion", MOREHOTKEYS_VERSION_VERSTRING
+            VALUE "InternalName", "MoreHotkeys"
+            VALUE "LegalCopyright", "MIT License"
+            VALUE "ProductName", "MoreHotkeys"
+			VALUE "ProductVersion", MOREHOTKEYS_VERSION_VERSTRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

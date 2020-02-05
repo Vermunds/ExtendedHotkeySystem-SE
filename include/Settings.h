@@ -20,13 +20,13 @@ namespace MHK
 			UInt32           id;
 		};
 
-		bool					dualWieldSupport; //ok
+		//bool					dualWieldSupport;
 
-		Button					modifierKey; //ok
+		Button					modifierKey;
 
-		bool					useWhiteList; //ok
-		std::vector<Button>		whitelist; //ok
-		bool					allowOverride; //ok
+		bool					useWhiteList;
+		std::vector<Button>		whitelist;
+		bool					allowOverride;
 
 		bool IsInWhitelist(RE::INPUT_DEVICE a_device, UInt32 a_id);
 

@@ -64,8 +64,8 @@ namespace MHK
 		ini.LoadFile(".\\Data\\SKSE\\Plugins\\ExtendedHotkeySystem.ini");
 
 		//GENERAL
-		settings->dualWieldSupport = ini.GetBoolValue("GENERAL", "bDualWieldSupport", false, false);
-		ini.SetBoolValue("GENERAL", "bDualWieldSupport", settings->dualWieldSupport, "# Allows you to equip the same weapon to the left hand if it's already equipped to the right (instead of unequipping it)\n# Only works with the same weapons and enchantments.As a rule of thumb : if it stacks in the inventory, it will work, otherwise no.\n# Default value is false (disabled)", true);
+		//settings->dualWieldSupport = ini.GetBoolValue("GENERAL", "bDualWieldSupport", false, false);
+		//ini.SetBoolValue("GENERAL", "bDualWieldSupport", settings->dualWieldSupport, "# Allows you to equip the same weapon to the left hand if it's already equipped to the right (instead of unequipping it)\n# Only works with the same weapons and enchantments.As a rule of thumb : if it stacks in the inventory, it will work, otherwise no.\n# Default value is false (disabled)", true);
 
 		UInt32 modifierKey = ini.GetLongValue("GENERAL", "iModifierKey", 29, false);
 		settings->modifierKey = GetButtonObj(modifierKey);

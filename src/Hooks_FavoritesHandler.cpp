@@ -7,11 +7,10 @@
 #include "Offsets.h"
 #include "HotkeyManager.h"
 #include "Settings.h"
+#include "Util.h"
 
 namespace Hooks_FavoritesHandler
 {
-	bool isUnequipping = false;
-
 	uintptr_t ProcessButton_Original_ptr;
 
 	bool IsPlayerVampire()
@@ -22,35 +21,7 @@ namespace Hooks_FavoritesHandler
 		return player->race == vampireRace;
 	}
 
-	bool CanDualWield(RE::PlayerCharacter* a_player, RE::TESObjectWEAP* a_weapon)
-	{
-		if (a_weapon->IsOneHandedAxe() || a_weapon->IsOneHandedDagger() || a_weapon->IsOneHandedMace() || a_weapon->IsOneHandedSword())
-		{
-			RE::TESObjectREFR::InventoryItemMap inventory = a_player->GetInventory();
-
-			RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin();
-
-			// Iterate over the map using iterator
-			while (it != inventory.end())
-			{
-				if (it->first == static_cast<RE::TESBoundObject*>(a_weapon))
-				{
-					if (it->second.first >= 2)
-					{
-						return true;
-					}
-					else
-					{
-						return false;
-					}
-				}
-				++it;
-			}
-		}
-		return false;
-	}
-
-	void EquipItem(RE::TESForm* a_item)
+	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData)
 	{
 		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
 		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
@@ -76,35 +47,17 @@ namespace Hooks_FavoritesHandler
 
 			if (IsEquipped(nullptr, nullptr, player, item))
 			{
-				em->UnequipItem(player, item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+				em->UnequipItem(player, item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			}
 			else
 			{
-				em->EquipItem(player, a_item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+				em->EquipItem(player, a_item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			}
 			break;
 		}
 		case RE::FormType::Weapon:
 		{
 			RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
-			if (settings->dualWieldSupport && CanDualWield(player, item))
-			{
-				if (item == player->currentProcess->GetEquippedRightHand() && item == player->currentProcess->GetEquippedLeftHand())
-				{
-					//Unequip from left
-					em->UnequipItem(player, item, nullptr, 1, GetLeftHandEquipSlot(), true, false, true, false);
-					break;
-				}
-				else if (item == player->currentProcess->GetEquippedRightHand() && item != player->currentProcess->GetEquippedLeftHand())
-				{
-					//Equip to left hand
-					em->EquipItem(player, item, nullptr, 1, GetLeftHandEquipSlot(), true, false, true, false);
-					break;
-				}
-
-				//Not equipped to the right -> continue
-			}
-
 			if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
 			{
 				//Item already equipped
@@ -112,7 +65,7 @@ namespace Hooks_FavoritesHandler
 			}
 			else
 			{
-				em->EquipItem(player, item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+				em->EquipItem(player, item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			}
 			break;
 		}
@@ -126,36 +79,43 @@ namespace Hooks_FavoritesHandler
 			}
 			else
 			{
-				em->EquipItem(player, item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+				em->EquipItem(player, item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			}
 			break;
 		}
 		case RE::FormType::AlchemyItem:
 		{
 			RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(a_item);
-			em->EquipItem(player, item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+			em->EquipItem(player, item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			break;
 		}
 		case RE::FormType::Ingredient:
 		{
 			RE::IngredientItem* item = static_cast<RE::IngredientItem*>(a_item);
-			em->EquipItem(player, item, nullptr, 1, item->GetEquipSlot(), true, false, true, false);
+			em->EquipItem(player, item, a_extraData, 1, item->GetEquipSlot(), true, false, true, false);
 			break;
 		}
 		case RE::FormType::Spell:
 		{
 			RE::SpellItem* item = static_cast<RE::SpellItem*>(a_item);
+			if (item->IsTwoHanded())
+			{
+				EquipSpell(em, player, item, item->GetEquipSlot());
+			}
+			else
+			{
+				if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
+				{
+					//Equip spell to left hand
+					EquipSpell(em, player, item, GetLeftHandEquipSlot());
+				}
+				else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
+				{
+					//Equip spell to right hand
+					EquipSpell(em, player, item, GetRightHandEquipSlot());
+				}
+			}
 
-			if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
-			{
-				//Equip spell to left hand
-				EquipSpell(em, player, item, GetLeftHandEquipSlot());
-			}
-			else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
-			{
-				//Equip spell to right hand
-				EquipSpell(em, player, item, GetRightHandEquipSlot());
-			}
 			return; //Nothing to equip
 		}
 		case RE::FormType::Shout:
@@ -173,14 +133,14 @@ namespace Hooks_FavoritesHandler
 			}
 			else
 			{
-				em->EquipItem(player, a_item, nullptr, 1, nullptr, true, false, true, false);
+				em->EquipItem(player, a_item, a_extraData, 1, nullptr, true, false, true, false);
 			}
 			break;
 		}
 		case RE::FormType::Scroll:
 		{
 			RE::ScrollItem* item = static_cast<RE::ScrollItem*>(a_item);
-			em->EquipItem(player, a_item, nullptr, 1, nullptr, true, false, true, false);
+			em->EquipItem(player, a_item, a_extraData, 1, nullptr, true, false, true, false);
 			break;
 		}
 		}
@@ -191,18 +151,11 @@ namespace Hooks_FavoritesHandler
 	{
 		using MHK::HotkeyManager;
 
-		RE::UserEvents* inStr = RE::UserEvents::GetSingleton();
+		RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
 
 		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
 
-		if (inputDeviceManager->IsGamepadEnabled())
-		{
-			bool(*ProcessButton_Original)(RE::FavoritesHandler*, RE::ButtonEvent*);
-			ProcessButton_Original = reinterpret_cast<bool(*)(RE::FavoritesHandler*, RE::ButtonEvent*)>(ProcessButton_Original_ptr);;
-			return ProcessButton_Original(a_this, a_event);
-		}
-
-		if (a_event->userEvent == inStr->favorites)
+		if (a_event->userEvent == userEvents->favorites)
 		{
 			RE::UIMessageQueue* messageQueue = RE::UIMessageQueue::GetSingleton();
 			RE::UI* ui = RE::UI::GetSingleton();
@@ -218,12 +171,41 @@ namespace Hooks_FavoritesHandler
 		if (a_event->eventType == RE::INPUT_EVENT_TYPE::kButton)
 		{
 			HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
-			HotkeyManager::Hotkey* hotkey = hotkeyManager->GetHotkey(a_event->device, a_event->idCode, IsPlayerVampire());
+			HotkeyManager::Hotkey* hotkey = nullptr;
+			
+			if (a_event->device == RE::INPUT_DEVICE::kGamepad && !MHK::IsVanillaHotkey(a_event->userEvent))
+			{
+				return false;
+			}
+
+			bool isVampire = IsPlayerVampire();
+			isVampire ? hotkey = hotkeyManager->GetVampireHotkey(a_event->device, a_event->idCode) : hotkey = hotkeyManager->GetHotkey(a_event->device, a_event->idCode);
 
 			if (hotkey)
 			{
-				EquipItem(hotkey->item);
-				return true;
+				//Update hotkeys and check again
+				hotkeyManager->UpdateHotkeys();
+
+				if (isVampire ? hotkey = hotkeyManager->GetVampireHotkey(a_event->device, a_event->idCode) : hotkey = hotkeyManager->GetHotkey(a_event->device, a_event->idCode))
+				{
+					if (hotkey->type == HotkeyManager::Hotkey::Type::kItem)
+					{
+						HotkeyManager::ItemHotkey* itemHotkey = static_cast<HotkeyManager::ItemHotkey*>(hotkey);
+						RE::TESForm* baseForm = hotkeyManager->GetBaseForm(itemHotkey);
+						if (baseForm)
+						{
+							RE::ExtraDataList* extraData = hotkeyManager->GetHotkeyData(itemHotkey);
+							EquipItem(baseForm, extraData);
+							return true;
+						}
+					}
+					else
+					{
+						HotkeyManager::MagicHotkey* magicHotkey = static_cast<HotkeyManager::MagicHotkey*>(hotkey);
+						EquipItem(magicHotkey->form, nullptr);
+						return true;
+					}
+				}
 			}
 		}
 		return false;
@@ -246,18 +228,14 @@ namespace Hooks_FavoritesHandler
 
 		RE::BSInputDeviceManager* idm = RE::BSInputDeviceManager::GetSingleton();
 
-		if (idm->IsGamepadEnabled())
+		if (idm->IsGamepadEnabled() && a_event->device == RE::INPUT_DEVICE::kGamepad)
 		{
 			if (a_event->eventType == RE::INPUT_EVENT_TYPE::kButton && a_event->HasIDCode())
 			{
 				RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
 				RE::ButtonEvent* evn = static_cast<RE::ButtonEvent*>(a_event);
 
-				if (evn->userEvent == userEvents->favorites ||
-					evn->userEvent == userEvents->hotkey1 || evn->userEvent == userEvents->hotkey2 ||
-					evn->userEvent == userEvents->hotkey3 || evn->userEvent == userEvents->hotkey4 ||
-					evn->userEvent == userEvents->hotkey5 || evn->userEvent == userEvents->hotkey6 ||
-					evn->userEvent == userEvents->hotkey7 || evn->userEvent == userEvents->hotkey8)
+				if (MHK::IsVanillaHotkey(evn->userEvent) && evn->IsUp())
 				{
 					return 1; //true
 				}
@@ -279,7 +257,7 @@ namespace Hooks_FavoritesHandler
 				using MHK::HotkeyManager;
 
 				HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
-				HotkeyManager::Hotkey* hotkey = hotkeyManager->GetHotkey(evn->device, evn->idCode, IsPlayerVampire()); //TODO
+				HotkeyManager::Hotkey* hotkey = hotkeyManager->GetHotkey(evn->device, evn->idCode);
 
 				if (hotkey)
 				{

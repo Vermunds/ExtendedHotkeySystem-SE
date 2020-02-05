@@ -1,9 +1,8 @@
 #pragma once
 
-#include "RE/TESForm.h"
-#include "RE/InputDevices.h"
+#include "RE/Skyrim.h"
 
-#include <vector>
+#include <map>
 
 namespace MHK
 {
@@ -14,31 +13,74 @@ namespace MHK
 		class Hotkey
 		{
 		public:
-			RE::TESForm* item;
+			enum class Type
+			{
+				kInvalid,
+				kItem,
+				kMagic
+			};
+
 			RE::INPUT_DEVICE device;
 			UInt32 keyMask;
+			Type type = Type::kInvalid;
+		};
+
+		class ItemHotkey : public Hotkey
+		{
+		public:
+			UInt8 extraDataId;
+		};
+
+		class MagicHotkey : public Hotkey
+		{
+		public:
+			RE::TESForm* form;
+		};
+
+		class ControllerHotkey
+		{
+			Hotkey* hotkey;
 		};
 
 	private:
 		static HotkeyManager* singleton;
 
-		std::vector<Hotkey*> hotkeys;
-		std::vector<Hotkey*> vampireHotkeys;
+		std::list<Hotkey*> hotkeys;
+		std::list<MagicHotkey*> vampireHotkeys;
 
 	public:
+		static Hotkey::Type GetHotkeyType(RE::TESForm* a_form);
 		static HotkeyManager* GetSingleton();
 
-		void AddHotkey(Hotkey* a_hotkey, bool a_isVampire);
-		void RemoveHotkey(Hotkey* a_hotkey, bool a_isVampire);
-		Hotkey* GetHotkey(RE::TESForm* a_form, bool a_isVampire);
-		Hotkey* GetHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, bool a_isVampire);
-		bool IsFavorited(RE::TESForm* a_form);
+		UInt8 UpdateHotkeys(); //Return value = next free hotkey slot
+
+		RE::ExtraDataList* GetHotkeyData(ItemHotkey* a_hotkey);
+		RE::TESForm* GetBaseForm(ItemHotkey* a_hotkey);
+		void SetHotkeyExtraData(RE::InventoryEntryData* a_entryData, UInt8 a_id);
+
+		ItemHotkey* GetItemHotkey(RE::InventoryEntryData* a_entryData);
+		MagicHotkey* GetMagicHotkey(RE::TESForm* a_form);
+		MagicHotkey* GetVampireHotkey(RE::TESForm* a_form);
+
+		Hotkey* GetHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask);
+		MagicHotkey* GetVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask);
+
+		bool RemoveHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask);
+		bool RemoveVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask);
+
+		ItemHotkey* AddItemHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::InventoryEntryData* a_entryData);
+		MagicHotkey* AddMagicHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::TESForm* a_form);
+		MagicHotkey* AddVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::TESForm* a_form);
+
+		bool IsMagicFavorited(RE::TESForm* a_form);
 		bool IsVampireSpell(RE::TESForm* a_form);
 
-		std::vector<Hotkey*> GetHotkeys();
-		std::vector<Hotkey*> GetVampireHotkeys();
 
-		void SetHotkeys(std::vector<Hotkey*> a_hotkeys);
-		void SetVampireHotkeys(std::vector<Hotkey*> a_hotkeys);
+		//Serialization
+		std::list<Hotkey*> GetHotkeys();
+		std::list<Hotkey*> GetVampireHotkeys();
+
+		//Called after loading done
+		void SetHotkeys(std::list<Hotkey*> a_hotkeys, std::list<Hotkey*> a_vampireHotkeys);
 	};
 }

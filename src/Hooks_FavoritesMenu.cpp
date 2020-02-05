@@ -17,37 +17,6 @@ namespace Hooks_FavoritesMenu
 	uintptr_t ProcessMessage_Original_ptr;
 	uintptr_t AdvanceMovie_Original_ptr;
 
-	RE::ExtraHotkey::Hotkey GetVanillaHotkey(RE::TESForm* a_form)
-	{
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::BSSimpleList<RE::InventoryEntryData*>* entries = player->GetInventoryChanges()->entryList;
-
-		RE::BSSimpleList<RE::InventoryEntryData*>::iterator i;
-		for (i = entries->begin(); i != entries->end(); ++i)
-		{
-			RE::InventoryEntryData* entry = *i;
-
-			if (entry->object->formID == a_form->formID)
-			{
-				//Player have the item
-				RE::BSSimpleList<RE::ExtraDataList*>* extraList = entry->extraLists;
-				RE::BSSimpleList<RE::ExtraDataList*>::iterator j;
-				for (j = extraList->begin(); j != extraList->end(); ++j)
-				{
-					RE::ExtraDataList* extraData = *j;
-
-					if (extraData->HasType(RE::ExtraDataType::kHotkey))
-					{
-						//Item is favorited
-						RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraData->GetByType(RE::ExtraDataType::kHotkey));
-						return extraHotkey->hotkey;
-					}
-				}
-			}
-		}
-		return RE::ExtraHotkey::Hotkey::kUnbound;
-	}
-
 	bool IsModifierKeyDown()
 	{
 		MHK::Settings* settings = MHK::Settings::GetSingleton();
@@ -65,6 +34,46 @@ namespace Hooks_FavoritesMenu
 		return inputDevice->IsPressed(settings->modifierKey.id);
 	}
 
+	inline void UnSetHotkeyIcon(RE::GFxValue a_hotkeyIcon)
+	{
+		RE::GFxValue::DisplayInfo displayInfo;
+
+		a_hotkeyIcon.GetDisplayInfo(&displayInfo);
+		displayInfo.SetVisible(false);
+		a_hotkeyIcon.SetDisplayInfo(displayInfo);
+		a_hotkeyIcon.GotoAndStop("0");
+	}
+
+	inline void SetHotkeyIcon(RE::GFxValue a_hotkeyIcon, RE::INPUT_DEVICE a_device, UInt32 a_keyMask, bool a_controllerMode)
+	{
+		RE::GFxValue::DisplayInfo displayInfo;
+		std::string str;
+
+		if (a_device == RE::INPUT_DEVICE::kKeyboard)
+		{
+			str = std::to_string(a_keyMask);
+		}
+		else if (a_device == RE::INPUT_DEVICE::kMouse)
+		{
+			str = std::to_string(a_keyMask + 256);
+		}
+		else if (a_device == RE::INPUT_DEVICE::kGamepad)
+		{
+			str = std::to_string(MHK::GetGamepadIconIndex(a_keyMask));
+		}
+		else
+		{
+			//Hotkey is not available
+			UnSetHotkeyIcon(a_hotkeyIcon);
+			return;
+		}
+
+		a_hotkeyIcon.GetDisplayInfo(&displayInfo);
+		displayInfo.SetVisible(true);
+		a_hotkeyIcon.SetDisplayInfo(displayInfo);
+		a_hotkeyIcon.GotoAndStop(str.c_str());
+	}
+
 	void UpdateHotkeyIcons(RE::FavoritesMenu* a_favoritesMenu, bool a_controllerMode)
 	{
 		using MHK::HotkeyManager;
@@ -74,8 +83,14 @@ namespace Hooks_FavoritesMenu
 		RE::GFxValue clipMgr, entryList;
 		a_favoritesMenu->view->GetVariable(&clipMgr, "_root.MenuHolder.Menu_mc.itemList._entryClipManager");
 		a_favoritesMenu->view->GetVariable(&entryList, "_root.MenuHolder.Menu_mc.itemList._entryList");
-		_ASSERT(clipMgr.GetType() != RE::GFxValue::ValueType::kUndefined);
-		_ASSERT(entryList.GetType() != RE::GFxValue::ValueType::kUndefined);
+		if (clipMgr.GetType() == RE::GFxValue::ValueType::kUndefined)
+		{
+			return;
+		}
+		if (entryList.GetType() == RE::GFxValue::ValueType::kUndefined)
+		{
+			return;
+		}
 
 		for (UInt32 i = 0; i < a_favoritesMenu->favorites.size(); ++i)
 		{
@@ -102,109 +117,37 @@ namespace Hooks_FavoritesMenu
 				continue;
 			}
 
-			RE::GFxValue::DisplayInfo displayInfo;
-
-			if (a_controllerMode)
+			if (a_favoritesMenu->isVampire)
 			{
-				using VanillaHotkey = RE::ExtraHotkey::Hotkey;
-
-				RE::ControlMap* controlMap = RE::ControlMap::GetSingleton();
-				RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
-
-				VanillaHotkey vanillaHotkey = GetVanillaHotkey(a_favoritesMenu->favorites[i].item);
-				UInt32 mappedKey = 0;
-
-				switch (vanillaHotkey)
+				if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetVampireHotkey(a_favoritesMenu->favorites[i].item))
 				{
-				case VanillaHotkey::kSlot1:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey1, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
+					SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
+					continue;
 				}
-				case VanillaHotkey::kSlot2:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey2, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot3:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey3, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot4:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey4, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot5:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey5, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot6:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey6, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot7:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey7, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				case VanillaHotkey::kSlot8:
-				{
-					mappedKey = controlMap->GetMappedKey(userEvents->hotkey8, RE::INPUT_DEVICE::kGamepad, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-					break;
-				}
-				}
-
-				if (mappedKey)
-				{
-					//Item has a hotkey
-					hotkeyIcon.GetDisplayInfo(&displayInfo);
-					displayInfo.SetVisible(true);
-					hotkeyIcon.SetDisplayInfo(displayInfo);
-					hotkeyIcon.GotoAndStop(std::to_string(MHK::GetGamepadIconIndex(mappedKey)).c_str());
-				}
-				else
-				{
-					//Item has no hotkey
-					hotkeyIcon.GetDisplayInfo(&displayInfo);
-					displayInfo.SetVisible(false);
-					hotkeyIcon.SetDisplayInfo(displayInfo);
-					hotkeyIcon.GotoAndStop("0");
-				}
-
 			}
 			else
 			{
-				if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetHotkey(a_favoritesMenu->favorites[i].item, a_favoritesMenu->isVampire))
+				HotkeyManager::Hotkey::Type hotkeyType = HotkeyManager::GetHotkeyType(a_favoritesMenu->favorites[i].item);
+				if (hotkeyType == HotkeyManager::Hotkey::Type::kItem)
 				{
-					//Hotkey found
-					std::string str;
-					switch (hotkey->device)
+					if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetItemHotkey(a_favoritesMenu->favorites[i].entryData))
 					{
-					case RE::INPUT_DEVICE::kKeyboard:
-						str = std::to_string(hotkey->keyMask);
-						break;
-					case RE::INPUT_DEVICE::kMouse:
-						str = std::to_string(hotkey->keyMask + 256);
-						break;
+						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
+						continue;
 					}
-					hotkeyIcon.GetDisplayInfo(&displayInfo);
-					displayInfo.SetVisible(true);
-					hotkeyIcon.SetDisplayInfo(displayInfo);
-					hotkeyIcon.GotoAndStop(str.c_str());
 				}
 				else
 				{
-					//Hotkey not found
-					hotkeyIcon.GetDisplayInfo(&displayInfo);
-					displayInfo.SetVisible(false);
-					hotkeyIcon.SetDisplayInfo(displayInfo);
-					hotkeyIcon.GotoAndStop("0");
+					if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetMagicHotkey(a_favoritesMenu->favorites[i].item))
+					{
+						//Hotkey found
+						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
+						continue;
+					}
 				}
 			}
+			//Hotkey not found
+			UnSetHotkeyIcon(hotkeyIcon);
 		}
 	}
 
@@ -215,13 +158,6 @@ namespace Hooks_FavoritesMenu
 		RE::UI* ui = RE::UI::GetSingleton();
 		RE::InterfaceStrings* interfaceStrings = RE::InterfaceStrings::GetSingleton();
 		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(interfaceStrings->favoritesMenu).get());
-
-		if (inputDeviceManager->IsGamepadEnabled())
-		{
-			bool(*CanProcess_Original)(RE::FavoritesMenu*, RE::InputEvent*);
-			CanProcess_Original = reinterpret_cast<bool(*)(RE::FavoritesMenu*, RE::InputEvent*)>(CanProcess_Original_ptr);;
-			return CanProcess_Original(favoritesMenu, a_event);
-		}
 
 		if (a_event->HasIDCode() && a_event->eventType == RE::INPUT_EVENT_TYPE::kButton && static_cast<RE::ButtonEvent*>(a_event)->IsUp())
 		{
@@ -235,13 +171,6 @@ namespace Hooks_FavoritesMenu
 		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
 		MHK::Settings* settings = MHK::Settings::GetSingleton();
 
-		if (inputDeviceManager->IsGamepadEnabled())
-		{
-			bool(*ProcessButton_Original)(RE::MenuEventHandler*, RE::InputEvent*);
-			ProcessButton_Original = reinterpret_cast<bool(*)(RE::MenuEventHandler*, RE::InputEvent*)>(ProcessButton_Original_ptr);;
-			return ProcessButton_Original(a_this, a_event);
-		}
-
 		using MHK::HotkeyManager;
 
 		RE::UI* ui = RE::UI::GetSingleton();
@@ -252,45 +181,50 @@ namespace Hooks_FavoritesMenu
 		if (favoritesMenu)
 		{
 			RE::GFxValue result;
-			favoritesMenu->view->Invoke("_root.GetSelectedIndex", &result, nullptr, 0);
+			favoritesMenu->view->GetVariable(&result, "_root.MenuHolder.Menu_mc.itemList._selectedIndex");
 
 			if (result.GetType() == RE::GFxValue::ValueType::kNumber)
 			{
 				UInt32 selectedIndex = static_cast<UInt32>(result.GetNumber());
 
+
+				bool isValidGamepadButton = a_event->device == RE::INPUT_DEVICE::kGamepad && MHK::IsVanillaHotkey(a_event->userEvent);
 				bool allowModifier = !settings->useWhiteList || (settings->useWhiteList && settings->allowOverride);
 				bool isValid = IsModifierKeyDown() && a_event->idCode != settings->modifierKey.id;
 				bool isInWhitelist = settings->useWhiteList && settings->IsInWhitelist(a_event->device, a_event->idCode);
 
-				if ((allowModifier && isValid) || isInWhitelist)
+				if (isValidGamepadButton || (allowModifier && isValid) || isInWhitelist)
 				{
 					if (0 <= selectedIndex && selectedIndex < favoritesMenu->favorites.size())
 					{
 						RE::TESForm* selectedItem = favoritesMenu->favorites[selectedIndex].item;
 
 						HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
-						HotkeyManager::Hotkey* hotkey = hotkeyManager->GetHotkey(favoritesMenu->favorites[selectedIndex].item, favoritesMenu->isVampire);
 
-						if (hotkey && hotkey->keyMask == a_event->idCode)
+						if (favoritesMenu->isVampire)
 						{
-							//Removing hotkey
-							hotkeyManager->RemoveHotkey(hotkey, favoritesMenu->isVampire);
+							hotkeyManager->AddVampireHotkey(a_event->device, a_event->idCode, selectedItem);
 						}
 						else
 						{
-							//Creating hotkey
-							HotkeyManager::Hotkey* newHotkey = new HotkeyManager::Hotkey();
-							newHotkey->device = a_event->device;
-							newHotkey->keyMask = a_event->idCode;
-							newHotkey->item = selectedItem;
-							hotkeyManager->AddHotkey(newHotkey, favoritesMenu->isVampire);
-
-							//_MESSAGE("Created new keyboard hotkey: deviceType: %d, keyMask: %d, formID: %.8x", a_event->device, a_event->idCode, selectedItem->formID);
+							HotkeyManager::Hotkey::Type hotkeyType = HotkeyManager::GetHotkeyType(selectedItem);
+							if (hotkeyType == HotkeyManager::Hotkey::Type::kItem)
+							{
+								hotkeyManager->AddItemHotkey(a_event->device, a_event->idCode, favoritesMenu->favorites[selectedIndex].entryData);
+							}
+							else
+							{
+								hotkeyManager->AddMagicHotkey(a_event->device, a_event->idCode, selectedItem);
+							}
 						}
 						void(*PlaySound)(const char*) = reinterpret_cast<void(*)(const char*)>(Offsets::PlaySound.GetUIntPtr());
 						PlaySound("UIFavorite");
 						return true;
 					}
+				}
+				else if (a_event->device == RE::INPUT_DEVICE::kGamepad)
+				{
+
 				}
 			}
 		}

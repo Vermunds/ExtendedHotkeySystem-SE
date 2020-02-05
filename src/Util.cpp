@@ -1,4 +1,5 @@
 #include "Util.h"
+#include "RE/UserEvents.h"
 
 namespace MHK
 {
@@ -60,19 +61,10 @@ namespace MHK
 		}
 	}
 
-	bool IsPointInPlane(RE::NiPoint2 a_point, RE::NiPoint2 a_planePos, RE::NiPoint2 a_planeEnd)
+	bool IsVanillaHotkey(RE::BSFixedString a_userEvent)
 	{
-		_ASSERT(a_planePos.x > a_planeEnd.x);
-		_ASSERT(a_planePos.y > a_planeEnd.y);
-
-		if (!(a_planePos.x < a_point.x && a_point.x < a_planeEnd.x))
-		{
-			return false;
-		}
-		if (!(a_planePos.y < a_point.y && a_point.y < a_planeEnd.y))
-		{
-			return false;
-		}
-		return true;
+		RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
+		return (a_userEvent == userEvents->hotkey1 || a_userEvent == userEvents->hotkey2 || a_userEvent == userEvents->hotkey3 || a_userEvent == userEvents->hotkey4 ||
+			a_userEvent == userEvents->hotkey5 || a_userEvent == userEvents->hotkey6 || a_userEvent == userEvents->hotkey7 || a_userEvent == userEvents->hotkey8);
 	}
 }

@@ -62,7 +62,7 @@ extern "C" {
 			_FATALERROR("Couldn't get serialization interface!\n");
 			return false;
 		}
-		serialization->SetUniqueID('MHKS');
+		serialization->SetUniqueID('EHKS');
 		serialization->SetSaveCallback(Serialization::SaveCallback);
 		serialization->SetLoadCallback(Serialization::LoadCallback);
 		

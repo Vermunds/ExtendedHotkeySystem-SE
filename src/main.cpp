@@ -1,76 +1,71 @@
-﻿#include "skse64_common/BranchTrampoline.h" 
-#include "skse64_common/skse_version.h"
-#include "skse64/PluginAPI.h"
-
-#include "version.h"
+﻿#include "version.h"
 #include "Settings.h"
-#include "HotkeyManager.h"
 #include "Serialization.h"
-#include "Hooks_FavoritesMenu.h"
+
 #include "Hooks_FavoritesHandler.h"
+#include "Hooks_FavoritesMenu.h"
 
-#include "RE/UI.h"
-
-#include "SKSE/API.h"
+constexpr auto MESSAGE_BOX_TYPE = 0x00001010L; // MB_OK | MB_ICONERROR | MB_SYSTEMMODAL
 
 extern "C" {
-	bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+	DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
 	{
-		SKSE::Logger::OpenRelative(FOLDERID_Documents, L"\\My Games\\Skyrim Special Edition\\SKSE\\ExtendedHotkeySystem.log");
-		SKSE::Logger::SetPrintLevel(SKSE::Logger::Level::kDebugMessage);
-		SKSE::Logger::SetFlushLevel(SKSE::Logger::Level::kDebugMessage);
-		SKSE::Logger::UseLogStamp(true);
+		assert(SKSE::log::log_directory().has_value());
+		auto path = SKSE::log::log_directory().value() / std::filesystem::path("ExtendedHotkeySystem.log");
+		auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path.string(), true);
+		auto log = std::make_shared<spdlog::logger>("global log", std::move(sink));
 
-		_MESSAGE("Extended Hotkey System v%s", MOREHOTKEYS_VERSION_VERSTRING);
+		log->set_level(spdlog::level::trace);
+		log->flush_on(spdlog::level::trace);
 
-		a_info->infoVersion = PluginInfo::kInfoVersion;
-		a_info->name = "Extended Hotkey System";
-		a_info->version = 1;
+		spdlog::set_default_logger(std::move(log));
+		spdlog::set_pattern("%g(%#): [%^%l%$] %v", spdlog::pattern_time_type::local);
+
+		SKSE::log::info("Extended Hotkey System v" + std::string(Version::NAME) + " - (" + std::string(__TIMESTAMP__) + ")");
+
+		a_info->infoVersion = SKSE::PluginInfo::kVersion;
+		a_info->name = Version::PROJECT.data();
+		a_info->version = Version::MAJOR;
 
 		if (a_skse->IsEditor()) {
-			_FATALERROR("Loaded in editor, marking as incompatible!\n");
+			SKSE::log::critical("Loaded in editor, marking as incompatible!");
 			return false;
 		}
 
-		if (a_skse->RuntimeVersion() != RUNTIME_VERSION_1_5_97) {
-			_FATALERROR("Unsupported runtime version %08X!\n", a_skse->RuntimeVersion());
+		if (a_skse->RuntimeVersion() < SKSE::RUNTIME_1_5_39) {
+			SKSE::log::critical("Unsupported runtime version " + a_skse->RuntimeVersion().string());
+			SKSE::WinAPI::MessageBox(nullptr, std::string("Unsupported runtime version " + a_skse->RuntimeVersion().string()).c_str(), "Extended Hotkey System - Error", MESSAGE_BOX_TYPE);
 			return false;
 		}
 
-		if (SKSE::AllocTrampoline(1024 * 8))
-		{
-			_MESSAGE("Branch trampoline creation successful");
-		}
-		else {
-			_FATALERROR("Branch trampoline creation failed!\n");
-			return false;
-		}
+		SKSE::AllocTrampoline(1 << 4, true);
 
 		return true;
 	}
 
-	bool SKSEPlugin_Load(SKSE::LoadInterface* a_skse)
+	DLLEXPORT bool SKSEPlugin_Load(SKSE::LoadInterface* a_skse)
 	{
-		if (!SKSE::Init(a_skse)) {
-			_FATALERROR("SKSE init failed!");
-			return false;
-		}
+		SKSE::Init(a_skse);
 
 		auto serialization = SKSE::GetSerializationInterface();
 		if (!serialization)
 		{
-			_FATALERROR("Couldn't get serialization interface!\n");
+			SKSE::WinAPI::MessageBox(nullptr, "Couldn't get SKSE serialization interface!", "Extended Hotkey System - Error", MESSAGE_BOX_TYPE);
 			return false;
 		}
 		serialization->SetUniqueID('EHKS');
-		serialization->SetSaveCallback(Serialization::SaveCallback);
-		serialization->SetLoadCallback(Serialization::LoadCallback);
-		
-		MHK::LoadSettings();
+		serialization->SetSaveCallback(EHKS::SaveCallback);
+		serialization->SetLoadCallback(EHKS::LoadCallback);
 
-		Hooks_FavoritesHandler::InstallHooks();
-		Hooks_FavoritesMenu::InstallHooks();
-		_MESSAGE("Plugin successfully loaded.");
+		EHKS::LoadSettings();
+		SKSE::log::info("Settings loaded.");
+
+		EHKS::LoadSettings();
+
+		EHKS::FavoritesHandlerEx::InstallHook();
+		EHKS::FavoritesMenuEx::InstallHook();
+
+		SKSE::log::info("Extended Hotkey System loaded.");
 
 		return true;
 	}

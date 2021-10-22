@@ -1,94 +1,10 @@
-#include "RE/Skyrim.h"
-
 #include "HotkeyManager.h"
 
-namespace MHK
+namespace EHKS
 {
-	using Hotkey = MHK::HotkeyManager::Hotkey;
-	using ItemHotkey = MHK::HotkeyManager::ItemHotkey;
-	using MagicHotkey = MHK::HotkeyManager::MagicHotkey;
-
 	HotkeyManager* HotkeyManager::singleton = nullptr;
 
-	RE::ExtraDataList* HotkeyManager::GetHotkeyData(ItemHotkey* a_hotkey)
-	{
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::TESObjectREFR::InventoryItemMap inventory = player->GetInventory();
-
-		RE::InventoryEntryData* result = nullptr;
-		
-		//Iterate inventory
-		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it) {
-			RE::InventoryEntryData* entryData = it->second.second.get();
-			SInt32 count = it->second.first;
-
-			if (!entryData->extraLists)
-			{
-				continue;
-			}
-
-			//Iterate InventoryEntryData->extraLists
-			for (RE::BSSimpleList<RE::ExtraDataList*>::iterator it2 = entryData->extraLists->begin(); it2 != entryData->extraLists->end(); ++it2)
-			{
-				RE::ExtraDataList* extraDataEntry = *it2;
-
-				if (extraDataEntry->HasType(RE::ExtraDataType::kHotkey))
-				{
-					RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraDataEntry->GetByType(RE::ExtraDataType::kHotkey));
-
-					if (!((UInt8)(extraHotkey->hotkey) == a_hotkey->extraDataId))
-					{
-						//Hotkey does not match
-						continue;
-					}
-					//Hotkey matches
-					return extraDataEntry;
-				}
-			}
-		}
-
-		return nullptr;
-	}
-
-	RE::TESForm* HotkeyManager::GetBaseForm(ItemHotkey* a_hotkey)
-	{
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::TESObjectREFR::InventoryItemMap inventory = player->GetInventory();
-
-		RE::InventoryEntryData* result = nullptr;
-
-		//Iterate inventory
-		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it) {
-			RE::InventoryEntryData* entryData = it->second.second.get();
-
-			if (!entryData->extraLists)
-			{
-				continue;
-			}
-
-			//Iterate InventoryEntryData->extraLists
-			for (RE::BSSimpleList<RE::ExtraDataList*>::iterator it2 = entryData->extraLists->begin(); it2 != entryData->extraLists->end(); ++it2)
-			{
-				RE::ExtraDataList* extraDataEntry = *it2;
-
-				if (extraDataEntry->HasType(RE::ExtraDataType::kHotkey))
-				{
-					RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraDataEntry->GetByType(RE::ExtraDataType::kHotkey));
-
-					if (!((UInt8)(extraHotkey->hotkey) == a_hotkey->extraDataId))
-					{
-						//Hotkey does not match
-						continue;
-					}
-					return entryData->object;					
-				}
-			}
-		}
-
-		return nullptr;
-	}
-
-	void HotkeyManager::SetHotkeyExtraData(RE::InventoryEntryData* a_entryData, UInt8 a_id)
+	void HotkeyManager::SetHotkeyExtraData(RE::InventoryEntryData* a_entryData, std::uint8_t a_id)
 	{
 		//Remove all existing hotkey extra data
 		for (RE::BSSimpleList<RE::ExtraDataList*>::iterator it = a_entryData->extraLists->begin(); it != a_entryData->extraLists->end(); ++it)
@@ -105,27 +21,27 @@ namespace MHK
 		if (a_entryData->extraLists->front()->HasType(RE::ExtraDataType::kHotkey))
 		{
 			RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(a_entryData->extraLists->front()->GetByType(RE::ExtraDataType::kHotkey));
-			extraHotkey->hotkey = (RE::ExtraHotkey::Hotkey)(a_id);
+			extraHotkey->hotkey = static_cast<RE::ExtraHotkey::Hotkey>(a_id);
 		}
 		else
 		{
-			RE::ExtraHotkey* extraHotkey = new RE::ExtraHotkey();
-			extraHotkey->hotkey = (RE::ExtraHotkey::Hotkey)(a_id);
+			RE::ExtraHotkey* extraHotkey = RE::BSExtraData::Create<RE::ExtraHotkey>(RE::Offset::ExtraHotkey::Vtbl.address());
+			extraHotkey->hotkey = static_cast<RE::ExtraHotkey::Hotkey>(a_id);
 			a_entryData->extraLists->front()->Add(extraHotkey);
 		}
 	}
 
-	Hotkey::Type HotkeyManager::GetHotkeyType(RE::TESForm* a_form)
+	Hotkey::HotkeyType HotkeyManager::GetHotkeyType(RE::TESForm* a_form)
 	{
 		using FormType = RE::FormType;
 
-		switch (a_form->formType)
+		switch (a_form->formType.get())
 		{
-		case (FormType::Spell):
-		case (FormType::Shout):
-			return Hotkey::Type::kMagic;
-		default:
-			return Hotkey::Type::kItem;
+			case (FormType::Spell):
+			case (FormType::Shout):
+				return Hotkey::HotkeyType::kMagic;
+			default:
+				return Hotkey::HotkeyType::kItem;
 		}
 	}
 
@@ -138,13 +54,13 @@ namespace MHK
 		return singleton;
 	}
 
-	UInt8 HotkeyManager::UpdateHotkeys()
+	std::uint8_t HotkeyManager::UpdateHotkeys()
 	{
 		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
 		RE::TESObjectREFR::InventoryItemMap inventory = player->GetInventory();
 
-		UInt8 result = 0;
-		std::vector<UInt8> occupiedSlots;
+		std::uint8_t result = 0;
+		std::vector<std::uint8_t> occupiedSlots;
 		std::list<RE::InventoryEntryData*> hotkeyedItems;
 
 		//Iterate inventory
@@ -186,7 +102,7 @@ namespace MHK
 			bool isHotkeyValid = false;
 
 			//Item hotkeys
-			if (hotkey->type == Hotkey::Type::kItem)
+			if (hotkey->type == Hotkey::HotkeyType::kItem)
 			{
 				ItemHotkey* itemHotkey = static_cast<ItemHotkey*>(hotkey);
 
@@ -210,7 +126,7 @@ namespace MHK
 								if (!found)
 								{
 									found = true;
-									if (itemHotkey->extraDataId == (UInt8)(extraHotkey->hotkey))
+									if (itemHotkey->extraDataId == static_cast<std::uint8_t>(extraHotkey->hotkey.get()))
 									{
 										//Hotkey matches!
 										isHotkeyValid = true;
@@ -228,10 +144,9 @@ namespace MHK
 				}
 			}
 			//Magic hotkeys
-			else if (hotkey->type == Hotkey::Type::kMagic)
+			else if (hotkey->type == Hotkey::HotkeyType::kMagic)
 			{
 				MagicHotkey* magicHotkey = static_cast<MagicHotkey*>(hotkey);
-				RE::MagicFavorites* magicFavorites = RE::MagicFavorites::GetSingleton();
 
 				if (IsMagicFavorited(magicHotkey->form))
 				{
@@ -263,9 +178,9 @@ namespace MHK
 		std::sort(occupiedSlots.begin(), occupiedSlots.end());
 
 		//Get free slot
-		for (std::vector<UInt8>::iterator it = occupiedSlots.begin(); it != occupiedSlots.end(); ++it)
+		for (std::vector<std::uint8_t>::iterator it2 = occupiedSlots.begin(); it2 != occupiedSlots.end(); ++it2)
 		{
-			UInt8 value = *it;
+			std::uint8_t value = *it2;
 
 			if (result == 0xFF)
 			{
@@ -294,7 +209,7 @@ namespace MHK
 		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
 			Hotkey* hotkey = *it;
 
-			if (hotkey->type == Hotkey::Type::kItem)
+			if (hotkey->type == Hotkey::HotkeyType::kItem)
 			{
 				ItemHotkey* itemHotkey = static_cast<ItemHotkey*>(hotkey);
 
@@ -307,7 +222,7 @@ namespace MHK
 					{
 						RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraDataEntry->GetByType(RE::ExtraDataType::kHotkey));
 
-						if (itemHotkey->extraDataId == (UInt8)(extraHotkey->hotkey))
+						if (itemHotkey->extraDataId == static_cast<std::uint8_t>(extraHotkey->hotkey.get()))
 						{
 							//Hotkey matches
 							return itemHotkey;
@@ -323,7 +238,7 @@ namespace MHK
 	{
 		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
 			Hotkey* hotkey = *it;
-			if (hotkey->type == Hotkey::Type::kMagic)
+			if (hotkey->type == Hotkey::HotkeyType::kMagic)
 			{
 				MagicHotkey* magicHotkey = static_cast<MagicHotkey*>(hotkey);
 				if (magicHotkey->form == a_form)
@@ -347,7 +262,7 @@ namespace MHK
 		return nullptr;
 	}
 
-	Hotkey* HotkeyManager::GetHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask)
+	Hotkey* HotkeyManager::GetHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
 		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
 			Hotkey* hotkey = *it;
@@ -359,7 +274,7 @@ namespace MHK
 		return nullptr;
 	}
 
-	MagicHotkey* HotkeyManager::GetVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask)
+	MagicHotkey* HotkeyManager::GetVampireHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
 		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it) {
 			MagicHotkey* hotkey = *it;
@@ -371,16 +286,16 @@ namespace MHK
 		return nullptr;
 	}
 
-	bool HotkeyManager::RemoveHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask)
+	bool HotkeyManager::RemoveHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
 		
 		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
 			Hotkey* hotkey = *it;
 			if (hotkey->device == a_deviceType && hotkey->keyMask == a_keyMask)
 			{
-				if (hotkey->type == Hotkey::Type::kItem)
+				if (hotkey->type == Hotkey::HotkeyType::kItem)
 				{
-					RE::ExtraDataList* extraData = GetHotkeyData(static_cast<ItemHotkey*>(hotkey));
+					RE::ExtraDataList* extraData = static_cast<ItemHotkey*>(hotkey)->GetExtraData();
 					if (extraData)
 					{
 						RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraData->GetByType(RE::ExtraDataType::kHotkey));
@@ -397,7 +312,7 @@ namespace MHK
 		return false;
 	}
 
-	bool HotkeyManager::RemoveVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask)
+	bool HotkeyManager::RemoveVampireHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
 		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it) {
 			Hotkey* hotkey = *it;
@@ -410,9 +325,9 @@ namespace MHK
 		return false;
 	}
 
-	ItemHotkey* HotkeyManager::AddItemHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::InventoryEntryData* a_entryData)
+	ItemHotkey* HotkeyManager::AddItemHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask, RE::InventoryEntryData* a_entryData)
 	{
-		UInt8 slot = UpdateHotkeys();
+		std::uint8_t slot = UpdateHotkeys();
 		if (slot == 0xFF)
 		{
 			return nullptr;
@@ -439,7 +354,7 @@ namespace MHK
 		ItemHotkey* hotkey = new ItemHotkey();
 		hotkey->device = a_deviceType;
 		hotkey->keyMask = a_keyMask;
-		hotkey->type = Hotkey::Type::kItem;
+		hotkey->type = Hotkey::HotkeyType::kItem;
 		hotkey->extraDataId = slot;
 		SetHotkeyExtraData(a_entryData, slot);
 		this->hotkeys.emplace_back(hotkey);
@@ -447,7 +362,7 @@ namespace MHK
 		return hotkey;
 	}
 
-	MagicHotkey* HotkeyManager::AddMagicHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::TESForm* a_form)
+	MagicHotkey* HotkeyManager::AddMagicHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask, RE::TESForm* a_form)
 	{
 		UpdateHotkeys();
 		MagicHotkey* existingMagicHotkey = GetMagicHotkey(a_form);
@@ -472,14 +387,14 @@ namespace MHK
 		MagicHotkey* hotkey = new MagicHotkey();
 		hotkey->device = a_deviceType;
 		hotkey->keyMask = a_keyMask;
-		hotkey->type = Hotkey::Type::kMagic;
+		hotkey->type = Hotkey::HotkeyType::kMagic;
 		hotkey->form = a_form;
 		this->hotkeys.emplace_back(hotkey);
 
 		return hotkey;
 	}
 
-	MagicHotkey* HotkeyManager::AddVampireHotkey(RE::INPUT_DEVICE a_deviceType, UInt32 a_keyMask, RE::TESForm* a_form)
+	MagicHotkey* HotkeyManager::AddVampireHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask, RE::TESForm* a_form)
 	{
 		UpdateHotkeys();
 		if (!IsVampireSpell(a_form))
@@ -508,7 +423,7 @@ namespace MHK
 		MagicHotkey* hotkey = new MagicHotkey();
 		hotkey->device = a_deviceType;
 		hotkey->keyMask = a_keyMask;
-		hotkey->type = Hotkey::Type::kMagic;
+		hotkey->type = Hotkey::HotkeyType::kMagic;
 		hotkey->form = a_form;
 		this->vampireHotkeys.emplace_back(hotkey);
 
@@ -541,10 +456,12 @@ namespace MHK
 		}
 		return false;
 	}
+
 	std::list<Hotkey*> HotkeyManager::GetHotkeys()
 	{
 		return this->hotkeys;
 	}
+
 	std::list<Hotkey*> HotkeyManager::GetVampireHotkeys()
 	{
 		std::list<Hotkey*> hotkeys;
@@ -555,6 +472,7 @@ namespace MHK
 		}
 		return hotkeys;
 	}
+
 	void HotkeyManager::SetHotkeys(std::list<Hotkey*> a_hotkeys, std::list<Hotkey*> a_vampireHotkeys)
 	{
 		this->hotkeys = a_hotkeys;
@@ -563,7 +481,7 @@ namespace MHK
 		for (std::list<Hotkey*>::iterator it = a_vampireHotkeys.begin(); it != a_vampireHotkeys.end(); ++it)
 		{
 			Hotkey* hotkey = *it;
-			if (hotkey->type == Hotkey::Type::kMagic)
+			if (hotkey->type == Hotkey::HotkeyType::kMagic)
 			{
 				vampireHotkeys.push_back(static_cast<MagicHotkey*>(hotkey));
 			}

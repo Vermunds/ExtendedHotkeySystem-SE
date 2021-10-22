@@ -1,25 +1,15 @@
-#include "skse64_common/SafeWrite.h"
-#include "skse64/gamethreads.h" //TaskDelegate
-
-#include "RE/Skyrim.h"
+#include "Hooks_FavoritesMenu.h"
 
 #include "HotkeyManager.h"
 #include "Util.h"
 #include "Settings.h"
 #include "Offsets.h"
 
-#include "SKSE\API.h"
-
-namespace Hooks_FavoritesMenu
+namespace EHKS
 {
-	uintptr_t ProcessButton_Original_ptr;
-	uintptr_t CanProcess_Original_ptr;
-	uintptr_t ProcessMessage_Original_ptr;
-	uintptr_t AdvanceMovie_Original_ptr;
-
 	bool IsModifierKeyDown()
 	{
-		MHK::Settings* settings = MHK::Settings::GetSingleton();
+		EHKS::Settings* settings = EHKS::Settings::GetSingleton();
 		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
 
 		RE::BSInputDevice* inputDevice;
@@ -34,7 +24,96 @@ namespace Hooks_FavoritesMenu
 		return inputDevice->IsPressed(settings->modifierKey.id);
 	}
 
-	inline void UnSetHotkeyIcon(RE::GFxValue a_hotkeyIcon)
+	RE::UI_MESSAGE_RESULTS FavoritesMenuEx::ProcessMessage_Hook(RE::UIMessage& a_message)
+	{
+		if (a_message.type == RE::UI_MESSAGE_TYPE::kUserEvent || a_message.type == RE::UI_MESSAGE_TYPE::kScaleformEvent)
+		{
+			if (IsModifierKeyDown())
+			{
+				return RE::UI_MESSAGE_RESULTS::kIgnore;
+			}
+		}
+		return _ProcessMessage(this, a_message);
+	}
+
+	void FavoritesMenuEx::AdvanceMovie_Hook(float a_interval, std::uint32_t a_currentTime)
+	{
+		this->UpdateHotkeyIcons(RE::BSInputDeviceManager::GetSingleton()->IsGamepadEnabled());
+		this->_AdvanceMovie(this, a_interval, a_currentTime);
+	}
+
+	bool FavoritesMenuEx::CanProcess_Hook(RE::InputEvent* a_event)
+	{
+		if (a_event->HasIDCode() && a_event->eventType == RE::INPUT_EVENT_TYPE::kButton && static_cast<RE::ButtonEvent*>(a_event)->IsUp())
+		{
+			return true;
+		}
+		return false;
+	}
+
+	bool FavoritesMenuEx::ProcessButton_Hook(RE::ButtonEvent* a_event)
+	{
+		EHKS::Settings* settings = EHKS::Settings::GetSingleton();
+
+		using EHKS::HotkeyManager;
+
+		RE::UI* ui = RE::UI::GetSingleton();
+		RE::InterfaceStrings* interfaceStrings = RE::InterfaceStrings::GetSingleton();
+
+		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(interfaceStrings->favoritesMenu).get());
+
+		if (favoritesMenu)
+		{
+			RE::GFxValue result;
+			favoritesMenu->uiMovie->GetVariable(&result, "_root.MenuHolder.Menu_mc.itemList._selectedIndex");
+
+			if (result.GetType() == RE::GFxValue::ValueType::kNumber)
+			{
+				std::uint32_t selectedIndex = static_cast<std::uint32_t>(result.GetNumber());
+
+				bool isValidGamepadButton = a_event->device == RE::INPUT_DEVICE::kGamepad && EHKS::IsVanillaHotkey(a_event->userEvent);
+				bool allowModifier = !settings->useWhiteList || (settings->useWhiteList && settings->allowOverride);
+				bool isValid = IsModifierKeyDown() && a_event->idCode != settings->modifierKey.id;
+				bool isInWhitelist = settings->useWhiteList && settings->IsInWhitelist(a_event->device.get(), a_event->idCode);
+
+				if (isValidGamepadButton || (allowModifier && isValid) || isInWhitelist)
+				{
+					if (0 <= selectedIndex && selectedIndex < favoritesMenu->favorites.size())
+					{
+						RE::TESForm* selectedItem = favoritesMenu->favorites[selectedIndex].item;
+
+						HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
+
+						if (favoritesMenu->isVampire)
+						{
+							hotkeyManager->AddVampireHotkey(a_event->device.get(), a_event->idCode, selectedItem);
+						}
+						else
+						{
+							Hotkey::HotkeyType hotkeyType = HotkeyManager::GetHotkeyType(selectedItem);
+							if (hotkeyType == Hotkey::HotkeyType::kItem)
+							{
+								hotkeyManager->AddItemHotkey(a_event->device.get(), a_event->idCode, favoritesMenu->favorites[selectedIndex].entryData);
+							}
+							else
+							{
+								hotkeyManager->AddMagicHotkey(a_event->device.get(), a_event->idCode, selectedItem);
+							}
+						}
+						RE::PlaySound("UIFavorite");
+						return true;
+					}
+				}
+				else if (a_event->device == RE::INPUT_DEVICE::kGamepad)
+				{
+
+				}
+			}
+		}
+		return false;
+	}
+
+	void UnSetHotkeyIcon(RE::GFxValue a_hotkeyIcon)
 	{
 		RE::GFxValue::DisplayInfo displayInfo;
 
@@ -44,7 +123,7 @@ namespace Hooks_FavoritesMenu
 		a_hotkeyIcon.GotoAndStop("0");
 	}
 
-	inline void SetHotkeyIcon(RE::GFxValue a_hotkeyIcon, RE::INPUT_DEVICE a_device, UInt32 a_keyMask, bool a_controllerMode)
+	void SetHotkeyIcon(RE::GFxValue a_hotkeyIcon, RE::INPUT_DEVICE a_device, std::uint32_t a_keyMask, bool a_controllerMode)
 	{
 		RE::GFxValue::DisplayInfo displayInfo;
 		std::string str;
@@ -59,7 +138,7 @@ namespace Hooks_FavoritesMenu
 		}
 		else if (a_device == RE::INPUT_DEVICE::kGamepad)
 		{
-			str = std::to_string(MHK::GetGamepadIconIndex(a_keyMask));
+			str = std::to_string(GetGamepadIconIndex(a_keyMask));
 		}
 		else
 		{
@@ -74,15 +153,15 @@ namespace Hooks_FavoritesMenu
 		a_hotkeyIcon.GotoAndStop(str.c_str());
 	}
 
-	void UpdateHotkeyIcons(RE::FavoritesMenu* a_favoritesMenu, bool a_controllerMode)
+	void FavoritesMenuEx::UpdateHotkeyIcons(bool a_controllerMode)
 	{
-		using MHK::HotkeyManager;
+		using EHKS::HotkeyManager;
 
 		HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
 
 		RE::GFxValue clipMgr, entryList;
-		a_favoritesMenu->view->GetVariable(&clipMgr, "_root.MenuHolder.Menu_mc.itemList._entryClipManager");
-		a_favoritesMenu->view->GetVariable(&entryList, "_root.MenuHolder.Menu_mc.itemList._entryList");
+		this->uiMovie->GetVariable(&clipMgr, "_root.MenuHolder.Menu_mc.itemList._entryClipManager");
+		this->uiMovie->GetVariable(&entryList, "_root.MenuHolder.Menu_mc.itemList._entryList");
 		if (clipMgr.GetType() == RE::GFxValue::ValueType::kUndefined)
 		{
 			return;
@@ -92,7 +171,7 @@ namespace Hooks_FavoritesMenu
 			return;
 		}
 
-		for (UInt32 i = 0; i < a_favoritesMenu->favorites.size(); ++i)
+		for (std::uint32_t i = 0; i < this->favorites.size(); ++i)
 		{
 			RE::GFxValue entry, clipIndex, clip, hotkeyIcon;
 
@@ -117,9 +196,9 @@ namespace Hooks_FavoritesMenu
 				continue;
 			}
 
-			if (a_favoritesMenu->isVampire)
+			if (this->isVampire)
 			{
-				if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetVampireHotkey(a_favoritesMenu->favorites[i].item))
+				if (Hotkey* hotkey = hotkeyManager->GetVampireHotkey(this->favorites[i].item))
 				{
 					SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
 					continue;
@@ -127,10 +206,10 @@ namespace Hooks_FavoritesMenu
 			}
 			else
 			{
-				HotkeyManager::Hotkey::Type hotkeyType = HotkeyManager::GetHotkeyType(a_favoritesMenu->favorites[i].item);
-				if (hotkeyType == HotkeyManager::Hotkey::Type::kItem)
+				Hotkey::HotkeyType hotkeyType = HotkeyManager::GetHotkeyType(this->favorites[i].item);
+				if (hotkeyType == Hotkey::HotkeyType::kItem)
 				{
-					if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetItemHotkey(a_favoritesMenu->favorites[i].entryData))
+					if (Hotkey* hotkey = hotkeyManager->GetItemHotkey(this->favorites[i].entryData))
 					{
 						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
 						continue;
@@ -138,7 +217,7 @@ namespace Hooks_FavoritesMenu
 				}
 				else
 				{
-					if (HotkeyManager::Hotkey* hotkey = hotkeyManager->GetMagicHotkey(a_favoritesMenu->favorites[i].item))
+					if (Hotkey* hotkey = hotkeyManager->GetMagicHotkey(this->favorites[i].item))
 					{
 						//Hotkey found
 						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
@@ -151,125 +230,14 @@ namespace Hooks_FavoritesMenu
 		}
 	}
 
-	bool CanProcess_Hook(RE::MenuEventHandler* a_this, RE::InputEvent* a_event)
+	void FavoritesMenuEx::InstallHook()
 	{
-		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
+		REL::Relocation<std::uintptr_t> vTable(RE::Offset::FavoritesMenu::Vtbl);
 
-		RE::UI* ui = RE::UI::GetSingleton();
-		RE::InterfaceStrings* interfaceStrings = RE::InterfaceStrings::GetSingleton();
-		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(interfaceStrings->favoritesMenu).get());
+		_ProcessMessage = vTable.write_vfunc(0x4, &FavoritesMenuEx::ProcessMessage_Hook);
+		_AdvanceMovie = vTable.write_vfunc(0x5, &FavoritesMenuEx::AdvanceMovie_Hook);
 
-		if (a_event->HasIDCode() && a_event->eventType == RE::INPUT_EVENT_TYPE::kButton && static_cast<RE::ButtonEvent*>(a_event)->IsUp())
-		{
-			return true;
-		}
-		return false;
-	}
-
-	bool ProcessButton_Hook(RE::MenuEventHandler* a_this, RE::ButtonEvent* a_event)
-	{
-		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
-		MHK::Settings* settings = MHK::Settings::GetSingleton();
-
-		using MHK::HotkeyManager;
-
-		RE::UI* ui = RE::UI::GetSingleton();
-		RE::InterfaceStrings* interfaceStrings = RE::InterfaceStrings::GetSingleton();
-
-		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(interfaceStrings->favoritesMenu).get());
-
-		if (favoritesMenu)
-		{
-			RE::GFxValue result;
-			favoritesMenu->view->GetVariable(&result, "_root.MenuHolder.Menu_mc.itemList._selectedIndex");
-
-			if (result.GetType() == RE::GFxValue::ValueType::kNumber)
-			{
-				UInt32 selectedIndex = static_cast<UInt32>(result.GetNumber());
-
-
-				bool isValidGamepadButton = a_event->device == RE::INPUT_DEVICE::kGamepad && MHK::IsVanillaHotkey(a_event->userEvent);
-				bool allowModifier = !settings->useWhiteList || (settings->useWhiteList && settings->allowOverride);
-				bool isValid = IsModifierKeyDown() && a_event->idCode != settings->modifierKey.id;
-				bool isInWhitelist = settings->useWhiteList && settings->IsInWhitelist(a_event->device, a_event->idCode);
-
-				if (isValidGamepadButton || (allowModifier && isValid) || isInWhitelist)
-				{
-					if (0 <= selectedIndex && selectedIndex < favoritesMenu->favorites.size())
-					{
-						RE::TESForm* selectedItem = favoritesMenu->favorites[selectedIndex].item;
-
-						HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
-
-						if (favoritesMenu->isVampire)
-						{
-							hotkeyManager->AddVampireHotkey(a_event->device, a_event->idCode, selectedItem);
-						}
-						else
-						{
-							HotkeyManager::Hotkey::Type hotkeyType = HotkeyManager::GetHotkeyType(selectedItem);
-							if (hotkeyType == HotkeyManager::Hotkey::Type::kItem)
-							{
-								hotkeyManager->AddItemHotkey(a_event->device, a_event->idCode, favoritesMenu->favorites[selectedIndex].entryData);
-							}
-							else
-							{
-								hotkeyManager->AddMagicHotkey(a_event->device, a_event->idCode, selectedItem);
-							}
-						}
-						void(*PlaySound)(const char*) = reinterpret_cast<void(*)(const char*)>(Offsets::PlaySound.GetUIntPtr());
-						PlaySound("UIFavorite");
-						return true;
-					}
-				}
-				else if (a_event->device == RE::INPUT_DEVICE::kGamepad)
-				{
-
-				}
-			}
-		}
-
-		return false;
-	}
-
-	RE::UI_MESSAGE_RESULTS ProcessMessage_Hook(RE::FavoritesMenu* a_this, RE::UIMessage& a_message)
-	{
-		if (a_message.type == RE::UI_MESSAGE_TYPE::kUserEvent || a_message.type == RE::UI_MESSAGE_TYPE::kScaleformEvent)
-		{
-			if (IsModifierKeyDown())
-			{
-				return RE::UI_MESSAGE_RESULTS::kIgnore;
-			}
-		}
-		RE::UI_MESSAGE_RESULTS(*ProcessMessage_Original)(RE::FavoritesMenu*, RE::UIMessage&);
-		ProcessMessage_Original = reinterpret_cast<RE::UI_MESSAGE_RESULTS(*)(RE::FavoritesMenu*, RE::UIMessage&)>(ProcessMessage_Original_ptr);;
-		return ProcessMessage_Original(a_this,a_message);
-	}
-
-	void AdvanceMovie_Hook(RE::FavoritesMenu* a_this, float a_interval, UInt32 a_currentTime)
-	{
-		UpdateHotkeyIcons(a_this, RE::BSInputDeviceManager::GetSingleton()->IsGamepadEnabled());
-
-		void(*AdvanceMovie_Original)(RE::IMenu*, float, UInt32);
-		AdvanceMovie_Original = reinterpret_cast<void(*)(RE::IMenu*, float, UInt32)>(AdvanceMovie_Original_ptr);;
-		return AdvanceMovie_Original(a_this, a_interval, a_currentTime);
-	}
-
-	void InstallHooks()
-	{
-		RelocAddr<uintptr_t*> CanProcessPtr = RE::Offset::FavoritesMenu::Vtbl + (0x8 * 0x8) + 0x10 + (0x1 * 0x8);
-		RelocAddr<uintptr_t*> ProcessButtonPtr = RE::Offset::FavoritesMenu::Vtbl + (0x8 * 0x8) + 0x10 + (0x5 * 0x8);
-		RelocAddr<uintptr_t*> processMessagePtr = RE::Offset::FavoritesMenu::Vtbl + (0x4 * 0x8);
-		RelocAddr<uintptr_t*> advanceMoviePtr = RE::Offset::FavoritesMenu::Vtbl + (0x5 * 0x8);
-
-		CanProcess_Original_ptr = *(reinterpret_cast<uintptr_t*>(CanProcessPtr.GetUIntPtr()));
-		ProcessButton_Original_ptr = *(reinterpret_cast<uintptr_t*>(ProcessButtonPtr.GetUIntPtr()));
-		ProcessMessage_Original_ptr = *(reinterpret_cast<uintptr_t*>(processMessagePtr.GetUIntPtr()));
-		AdvanceMovie_Original_ptr = *(reinterpret_cast<uintptr_t*>(advanceMoviePtr.GetUIntPtr()));
-
-		SafeWrite64(CanProcessPtr.GetUIntPtr(), (uintptr_t)CanProcess_Hook);
-		SafeWrite64(ProcessButtonPtr.GetUIntPtr(), (uintptr_t)ProcessButton_Hook);
-		SafeWrite64(processMessagePtr.GetUIntPtr(), (uintptr_t)ProcessMessage_Hook);
-		SafeWrite64(advanceMoviePtr.GetUIntPtr(), (uintptr_t)AdvanceMovie_Hook);
+		_CanProcess = vTable.write_vfunc(0xB, &FavoritesMenuEx::CanProcess_Hook);
+		_ProcessButton = vTable.write_vfunc(0xF, &FavoritesMenuEx::ProcessButton_Hook);
 	}
 }

@@ -1,37 +1,30 @@
-#include "RE/TESDataHandler.h"
-#include "RE/TESFile.h"
-
 #include "Serialization.h"
 
-#include "SKSE/API.h"
-
-namespace Serialization
+namespace EHKS
 {
-	std::vector<UInt32> SerializeHotkeys(std::list<Hotkey*> a_hotkeyList)
+	std::vector<std::uint32_t> SerializeHotkeys(std::list<Hotkey*> a_hotkeyList)
 	{
-		RE::TESDataHandler* dataHandler = RE::TESDataHandler::GetSingleton();
-
-		std::vector<UInt32> serializedData;
+		std::vector<std::uint32_t> serializedData;
 
 		//Block length
-		serializedData.push_back(a_hotkeyList.size());
-		_MESSAGE("Serializing %d hotkeys...", a_hotkeyList.size());
+		serializedData.push_back(static_cast<std::uint32_t>(a_hotkeyList.size()));
+		SKSE::log::info("Serializing %d hotkeys...", a_hotkeyList.size());
 
 		for (auto it = a_hotkeyList.begin(); it != a_hotkeyList.end(); ++it)
 		{
 			Hotkey* hotkey = *it;
 
 			//Hotkey type
-			serializedData.push_back((UInt32)(hotkey->type));
+			serializedData.push_back(static_cast<std::uint32_t>(hotkey->type));
 
 			//DeviceType
-			serializedData.push_back(static_cast<UInt32>(hotkey->device));
+			serializedData.push_back(static_cast<std::uint32_t>(hotkey->device));
 
 			//KeyMask
 			serializedData.push_back(hotkey->keyMask);
 
 			//Hotkey data
-			if (hotkey->type == Hotkey::Type::kItem)
+			if (hotkey->type == Hotkey::HotkeyType::kItem)
 			{
 				ItemHotkey* itemHotkey = static_cast<ItemHotkey*>(hotkey);
 				serializedData.push_back(itemHotkey->extraDataId);
@@ -43,183 +36,181 @@ namespace Serialization
 			}
 
 		}
-		_MESSAGE("Successfully serialized %d hotkeys.", a_hotkeyList.size());
+		SKSE::log::info("Successfully serialized %d hotkeys.", a_hotkeyList.size());
 
 		return serializedData;
 	}
 
-	std::list<Hotkey*> DeserializeHotkeys(std::vector<UInt32> a_serializedData)
+	std::list<Hotkey*> DeserializeHotkeys(std::vector<std::uint32_t> a_serializedData)
 	{
-		RE::TESDataHandler* dataHandler = RE::TESDataHandler::GetSingleton();
-
-		UInt32 currentIndex = 0;
+		std::uint32_t currentIndex = 0;
 		std::list<Hotkey*> deserializedHotkeys;
 
-		UInt32 blockSize = a_serializedData[currentIndex++];
-		_MESSAGE("Expecting %d hotkeys.", blockSize);
+		std::uint32_t blockSize = a_serializedData[currentIndex++];
+		SKSE::log::info("Expecting %d hotkeys.", blockSize);
 
 		//Iterate through the hotkey entries
-		for (UInt32 i = 0; i < blockSize; ++i)
+		for (std::uint32_t i = 0; i < blockSize; ++i)
 		{
-			_MESSAGE("Reading hotkey %d data...", i + 1);
+			SKSE::log::info("Reading hotkey %d data...", i + 1);
 
 			//Read hotkey type
-			Hotkey::Type hotkeyType = (Hotkey::Type)(a_serializedData[currentIndex++]);
+			Hotkey::HotkeyType hotkeyType = static_cast<Hotkey::HotkeyType>(a_serializedData[currentIndex++]);
 
 			//Read DeviceType
 			RE::INPUT_DEVICE deviceType = static_cast<RE::INPUT_DEVICE>(a_serializedData[currentIndex++]);
 
 			//Read KeyMask
-			UInt32 keyMask = a_serializedData[currentIndex++];
+			std::uint32_t keyMask = a_serializedData[currentIndex++];
 
 			//Read hotkey data
-			UInt32 hotkeyData = a_serializedData[currentIndex++];
+			std::uint32_t hotkeyData = a_serializedData[currentIndex++];
 
 			//Check values and create hotkey
-			if (hotkeyType == Hotkey::Type::kMagic)
+			if (hotkeyType == Hotkey::HotkeyType::kMagic)
 			{
-				UInt32 formID = hotkeyData;
+				std::uint32_t formID = hotkeyData;
 				RE::FormID resolvedFormID;
 				if (!SKSE::GetSerializationInterface()->ResolveFormID(formID, resolvedFormID))
 				{
-					_ERROR("Unable to resolve formID %x. Ignoring hotkey.", formID);
+					SKSE::log::error("Unable to resolve formID %x. Ignoring hotkey.", formID);
 					continue;
 				}
-				_MESSAGE("Resolved formID %.8x to %.8x", formID, resolvedFormID);
+				SKSE::log::info("Resolved formID %.8x to %.8x", formID, resolvedFormID);
 
 				RE::TESForm* form = RE::TESForm::LookupByID(resolvedFormID);
 				if (!form)
 				{
-					_ERROR("Unable to lookup form %x. Ignoring hotkey.", resolvedFormID);
+					SKSE::log::error("Unable to lookup form %x. Ignoring hotkey.", resolvedFormID);
 					continue;
 				}
 
 				if (form->formType != RE::FormType::Spell && form->formType != RE::FormType::Shout)
 				{
-					_ERROR("Form %.8x is not a spell or a shout (%x). Ignoring hotkey.", resolvedFormID, form->formType);
+					SKSE::log::error("Form %.8x is not a spell or a shout (%x). Ignoring hotkey.", resolvedFormID, form->formType.get());
 					continue;
 				}
 				if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse)
 				{
-					_ERROR("Unknown device type: %d. Ignoring hotkey.", deviceType);
+					SKSE::log::error("Unknown device type: %d. Ignoring hotkey.", deviceType);
 					continue;
 				}
 
 				if (keyMask > 255)
 				{
-					_ERROR("Unknown keymask: %d. Ignoring hotkey", keyMask);
+					SKSE::log::error("Unknown keymask: %d. Ignoring hotkey", keyMask);
 					continue;
 				}
 
 				MagicHotkey* hotkey = new MagicHotkey();
 
-				hotkey->type = Hotkey::Type::kMagic;
+				hotkey->type = Hotkey::HotkeyType::kMagic;
 				hotkey->form = form;
 				hotkey->device = deviceType;
 				hotkey->keyMask = keyMask;
 				deserializedHotkeys.emplace_back(hotkey);
 			}
-			else if (hotkeyType == Hotkey::Type::kItem)
+			else if (hotkeyType == Hotkey::HotkeyType::kItem)
 			{
-				UInt32 extraDataId = hotkeyData;
+				std::uint32_t extraDataId = hotkeyData;
 
 				if (extraDataId >= 0xFF)
 				{
-					_ERROR("Invalid extra data id: %d. Ignoring hotkey.", extraDataId);
+					SKSE::log::error("Invalid extra data id: %d. Ignoring hotkey.", extraDataId);
 					continue;
 				}
 
-				if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse)
+				if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse && deviceType != RE::INPUT_DEVICE::kGamepad)
 				{
-					_ERROR("Unknown device type: %d. Ignoring hotkey.", deviceType);
+					SKSE::log::error("Unknown device type: %d. Ignoring hotkey.", deviceType);
 					continue;
 				}
 
 				if (keyMask > 255)
 				{
-					_ERROR("Unknown keymask: %d. Ignoring hotkey", keyMask);
+					SKSE::log::error("Unknown keymask: %d. Ignoring hotkey", keyMask);
 					continue;
 				}
 
 				ItemHotkey* hotkey = new ItemHotkey();
 
-				hotkey->type = Hotkey::Type::kItem;
-				hotkey->extraDataId = extraDataId;
+				hotkey->type = Hotkey::HotkeyType::kItem;
+				hotkey->extraDataId = static_cast<std::uint8_t>(extraDataId);
 				hotkey->device = deviceType;
 				hotkey->keyMask = keyMask;
 				deserializedHotkeys.emplace_back(hotkey);
 			}
 			else
 			{
-				_MESSAGE("Unknown hotkey type. Ignoring hotkey.");
+				SKSE::log::info("Unknown hotkey type. Ignoring hotkey.");
 				continue;
 			}
-			_MESSAGE("Hotkey %d successfully loaded.", i + 1);
+			SKSE::log::info("Hotkey %d successfully loaded.", i + 1);
 		}
 
-		_MESSAGE("Successfully loaded %d hotkeys", deserializedHotkeys.size());
+		SKSE::log::info("Successfully loaded %d hotkeys", deserializedHotkeys.size());
 
 		return deserializedHotkeys;
 	}
 
 	void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	{
-		MHK::HotkeyManager* hotkeyManager = MHK::HotkeyManager::GetSingleton();
+		HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
 
 		std::list<Hotkey*> hotkeys = hotkeyManager->GetHotkeys();
 		std::list<Hotkey*> vampireHotkeys = hotkeyManager->GetVampireHotkeys();
 
-		std::vector<UInt32> serializedData = Serialization::SerializeHotkeys(hotkeys);
-		std::vector<UInt32> serializedVampireData = Serialization::SerializeHotkeys(vampireHotkeys);
+		std::vector<std::uint32_t> serializedData = SerializeHotkeys(hotkeys);
+		std::vector<std::uint32_t> serializedVampireData = SerializeHotkeys(vampireHotkeys);
 
 		if (!a_intfc->OpenRecord('VERS', 1)) {
-			_ERROR("Failed to open record for serialized data!");
+			SKSE::log::error("Failed to open record for serialized data!");
 		}
 		else {
-			UInt32 version = SERIALIZATION_VERSION;
+			std::uint32_t version = SERIALIZATION_VERSION;
 			if (!a_intfc->WriteRecordData(&version, sizeof(version))) {
-				_ERROR("Failed to write version data!");
+				SKSE::log::error("Failed to write version data!");
 			}
 		}
 
 		if (!a_intfc->OpenRecord('KBHK', 1)) {
-			_ERROR("Failed to open record for serialized data!");
+			SKSE::log::error("Failed to open record for serialized data!");
 		}
 		else {
 			for (auto& elem : serializedData) {
 				if (!a_intfc->WriteRecordData(&elem, sizeof(elem))) {
-					_ERROR("Failed to write data for serialized data element!");
+					SKSE::log::error("Failed to write data for serialized data element!");
 					break;
 				}
 			}	
 		}
 		if (!a_intfc->OpenRecord('VAMP', 1)) {
-			_ERROR("Failed to open record for serialized data!");
+			SKSE::log::error("Failed to open record for serialized data!");
 		}
 		else {
 			for (auto& elem : serializedVampireData) {
 				if (!a_intfc->WriteRecordData(&elem, sizeof(elem))) {
-					_ERROR("Failed to write data for serialized data element!");
+					SKSE::log::error("Failed to write data for serialized data element!");
 					break;
 				}
 			}
 		}
-		_MESSAGE("Hotkeys saved successfully.");
+		SKSE::log::info("Hotkeys saved successfully.");
 	}
 
 	void LoadCallback(SKSE::SerializationInterface* a_intfc)
 	{
-		MHK::HotkeyManager* hotkeyManager = MHK::HotkeyManager::GetSingleton();
+		HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
 
-		std::vector<UInt32> serializedData;
-		std::vector<UInt32> serializedVampireData;
+		std::vector<std::uint32_t> serializedData;
+		std::vector<std::uint32_t> serializedVampireData;
 
 		std::list<Hotkey*> hotkeys;
 		std::list<Hotkey*> vampireHotkeys;
 
-		UInt32 type;
-		UInt32 version;
-		UInt32 length;
+		std::uint32_t type;
+		std::uint32_t version;
+		std::uint32_t length;
 
 		bool success = true;
 
@@ -228,15 +219,15 @@ namespace Serialization
 			{
 				case 'VERS':
 				{
-					UInt32 version;
-					if (!a_intfc->ReadRecordData(&version, sizeof(version))) {
-						_ERROR("Failed to load version info!");
+					std::uint32_t versionData;
+					if (!a_intfc->ReadRecordData(&versionData, sizeof(versionData))) {
+						SKSE::log::error("Failed to load version info!");
 						success = false;
 						break;
 					}
-					if (version != SERIALIZATION_VERSION)
+					if (versionData != SERIALIZATION_VERSION)
 					{
-						_ERROR("Saved data is incompatible! Ignoring.");
+						SKSE::log::error("Saved data is incompatible! Ignoring.");
 						success = false;
 						break;
 					}
@@ -244,10 +235,10 @@ namespace Serialization
 				}
 				case 'KBHK':
 				{
-					for (UInt32 i = 0; i < length; i += sizeof(UInt32)) {
-						UInt32 elem;
+					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t)) {
+						std::uint32_t elem;
 						if (!a_intfc->ReadRecordData(&elem, sizeof(elem))) {
-							_ERROR("Failed to load hotkey data element!");
+							SKSE::log::error("Failed to load hotkey data element!");
 							success = false;
 							break;
 						}
@@ -259,10 +250,10 @@ namespace Serialization
 				}
 				case 'VAMP':
 				{
-					for (UInt32 i = 0; i < length; i += sizeof(UInt32)) {
-						UInt32 elem;
+					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t)) {
+						std::uint32_t elem;
 						if (!a_intfc->ReadRecordData(&elem, sizeof(elem))) {
-							_ERROR("Failed to load hotkey data element!");
+							SKSE::log::error("Failed to load hotkey data element!");
 							success = false;
 							break;
 						}
@@ -274,7 +265,7 @@ namespace Serialization
 				}
 				default:
 				{
-					_ERROR("Unrecognized signature type!");
+					SKSE::log::error("Unrecognized signature type!");
 					success = false;
 					break;
 				}
@@ -290,22 +281,22 @@ namespace Serialization
 
 		if (serializedData.size() > 0)
 		{
-			hotkeys = Serialization::DeserializeHotkeys(serializedData);
-			_MESSAGE("Hotkeys loaded successfully.");
+			hotkeys = DeserializeHotkeys(serializedData);
+			SKSE::log::info("Hotkeys loaded successfully.");
 		}
 		else
 		{
-			_MESSAGE("No saved hotkey data found.");
+			SKSE::log::info("No saved hotkey data found.");
 		}
 
 		if (serializedVampireData.size() > 0)
 		{
-			vampireHotkeys = Serialization::DeserializeHotkeys(serializedVampireData);
-			_MESSAGE("Vampire hotkeys loaded successfully.");
+			vampireHotkeys = DeserializeHotkeys(serializedVampireData);
+			SKSE::log::info("Vampire hotkeys loaded successfully.");
 		}
 		else
 		{
-			_MESSAGE("No saved vampire hotkey data found.");
+			SKSE::log::info("No saved vampire hotkey data found.");
 		}
 		hotkeyManager->SetHotkeys(hotkeys, vampireHotkeys);
 	}

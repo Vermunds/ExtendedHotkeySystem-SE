@@ -1,0 +1,21 @@
+set(SOURCES
+	include/Hooks_FavoritesHandler.h
+	include/Hooks_FavoritesMenu.h
+	include/Hotkey/Hotkey.h
+	include/Hotkey/ItemHotkey.h
+	include/Hotkey/MagicHotkey.h
+	include/HotkeyManager.h
+	include/Offsets.h
+	include/PCH.h
+	include/Serialization.h
+	include/Settings.h
+	include/Util.h
+	src/Hooks_FavoritesHandler.cpp
+	src/Hooks_FavoritesMenu.cpp
+	src/Hotkey/ItemHotkey.cpp
+	src/HotkeyManager.cpp
+	src/Serialization.cpp
+	src/Settings.cpp
+	src/Util.cpp
+	src/main.cpp
+)

@@ -1,9 +1,8 @@
 #include "Util.h"
-#include "RE/UserEvents.h"
 
-namespace MHK
+namespace EHKS
 {
-	UInt32 GetGamepadIconIndex(UInt32 a_scanCode)
+	std::uint32_t GetGamepadIconIndex(std::uint32_t a_scanCode)
 	{
 		switch (a_scanCode)
 		{

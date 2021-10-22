@@ -3,9 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "RE/InputDevices.h"
-
-namespace MHK
+namespace EHKS
 {
 	class Settings
 	{
@@ -17,7 +15,7 @@ namespace MHK
 		struct Button
 		{
 			RE::INPUT_DEVICE inputDevice;
-			UInt32           id;
+			std::uint32_t id;
 		};
 
 		//bool					dualWieldSupport;
@@ -28,7 +26,7 @@ namespace MHK
 		std::vector<Button>		whitelist;
 		bool					allowOverride;
 
-		bool IsInWhitelist(RE::INPUT_DEVICE a_device, UInt32 a_id);
+		bool IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id);
 
 		static Settings* GetSingleton();
 	};

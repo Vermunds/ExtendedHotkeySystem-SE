@@ -90,7 +90,7 @@ namespace EHKS
 					SKSE::log::error("Form %.8x is not a spell or a shout (%x). Ignoring hotkey.", resolvedFormID, form->formType.get());
 					continue;
 				}
-				if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse)
+				if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse && deviceType != RE::INPUT_DEVICE::kGamepad)
 				{
 					SKSE::log::error("Unknown device type: %d. Ignoring hotkey.", deviceType);
 					continue;

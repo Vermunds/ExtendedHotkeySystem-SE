@@ -34,7 +34,6 @@ namespace EHKS
 				MagicHotkey* magicHotkey = static_cast<MagicHotkey*>(hotkey);
 				serializedData.push_back(magicHotkey->form->formID);
 			}
-
 		}
 		SKSE::log::info("Successfully serialized %d hotkeys.", a_hotkeyList.size());
 
@@ -163,33 +162,44 @@ namespace EHKS
 		std::vector<std::uint32_t> serializedData = SerializeHotkeys(hotkeys);
 		std::vector<std::uint32_t> serializedVampireData = SerializeHotkeys(vampireHotkeys);
 
-		if (!a_intfc->OpenRecord('VERS', 1)) {
+		if (!a_intfc->OpenRecord('VERS', 1))
+		{
 			SKSE::log::error("Failed to open record for serialized data!");
 		}
-		else {
+		else
+		{
 			std::uint32_t version = SERIALIZATION_VERSION;
-			if (!a_intfc->WriteRecordData(&version, sizeof(version))) {
+			if (!a_intfc->WriteRecordData(&version, sizeof(version)))
+			{
 				SKSE::log::error("Failed to write version data!");
 			}
 		}
 
-		if (!a_intfc->OpenRecord('KBHK', 1)) {
+		if (!a_intfc->OpenRecord('KBHK', 1))
+		{
 			SKSE::log::error("Failed to open record for serialized data!");
 		}
-		else {
-			for (auto& elem : serializedData) {
-				if (!a_intfc->WriteRecordData(&elem, sizeof(elem))) {
+		else
+		{
+			for (auto& elem : serializedData)
+			{
+				if (!a_intfc->WriteRecordData(&elem, sizeof(elem)))
+				{
 					SKSE::log::error("Failed to write data for serialized data element!");
 					break;
 				}
-			}	
+			}
 		}
-		if (!a_intfc->OpenRecord('VAMP', 1)) {
+		if (!a_intfc->OpenRecord('VAMP', 1))
+		{
 			SKSE::log::error("Failed to open record for serialized data!");
 		}
-		else {
-			for (auto& elem : serializedVampireData) {
-				if (!a_intfc->WriteRecordData(&elem, sizeof(elem))) {
+		else
+		{
+			for (auto& elem : serializedVampireData)
+			{
+				if (!a_intfc->WriteRecordData(&elem, sizeof(elem)))
+				{
 					SKSE::log::error("Failed to write data for serialized data element!");
 					break;
 				}
@@ -214,13 +224,15 @@ namespace EHKS
 
 		bool success = true;
 
-		while (a_intfc->GetNextRecordInfo(type, version, length)) {
+		while (a_intfc->GetNextRecordInfo(type, version, length))
+		{
 			switch (type)
 			{
-				case 'VERS':
+			case 'VERS':
 				{
 					std::uint32_t versionData;
-					if (!a_intfc->ReadRecordData(&versionData, sizeof(versionData))) {
+					if (!a_intfc->ReadRecordData(&versionData, sizeof(versionData)))
+					{
 						SKSE::log::error("Failed to load version info!");
 						success = false;
 						break;
@@ -233,37 +245,43 @@ namespace EHKS
 					}
 					break;
 				}
-				case 'KBHK':
+			case 'KBHK':
 				{
-					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t)) {
+					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t))
+					{
 						std::uint32_t elem;
-						if (!a_intfc->ReadRecordData(&elem, sizeof(elem))) {
+						if (!a_intfc->ReadRecordData(&elem, sizeof(elem)))
+						{
 							SKSE::log::error("Failed to load hotkey data element!");
 							success = false;
 							break;
 						}
-						else {
+						else
+						{
 							serializedData.push_back(elem);
 						}
 					}
 					break;
 				}
-				case 'VAMP':
+			case 'VAMP':
 				{
-					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t)) {
+					for (std::uint32_t i = 0; i < length; i += sizeof(std::uint32_t))
+					{
 						std::uint32_t elem;
-						if (!a_intfc->ReadRecordData(&elem, sizeof(elem))) {
+						if (!a_intfc->ReadRecordData(&elem, sizeof(elem)))
+						{
 							SKSE::log::error("Failed to load hotkey data element!");
 							success = false;
 							break;
 						}
-						else {
+						else
+						{
 							serializedVampireData.push_back(elem);
 						}
 					}
 					break;
 				}
-				default:
+			default:
 				{
 					SKSE::log::error("Unrecognized signature type!");
 					success = false;

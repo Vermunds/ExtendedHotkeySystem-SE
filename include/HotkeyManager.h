@@ -14,7 +14,7 @@ namespace EHKS
 		static Hotkey::HotkeyType GetHotkeyType(RE::TESForm* a_form);
 		static HotkeyManager* GetSingleton();
 
-		std::uint8_t UpdateHotkeys(); //Return value = next free hotkey slot
+		std::uint8_t UpdateHotkeys();  //Return value = next free hotkey slot
 
 		void SetHotkeyExtraData(RE::InventoryEntryData* a_entryData, std::uint8_t a_id);
 
@@ -34,7 +34,6 @@ namespace EHKS
 
 		bool IsMagicFavorited(RE::TESForm* a_form);
 		bool IsVampireSpell(RE::TESForm* a_form);
-
 
 		//Serialization
 		std::list<Hotkey*> GetHotkeys();

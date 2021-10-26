@@ -1,9 +1,9 @@
 #include "Hooks_FavoritesMenu.h"
 
 #include "HotkeyManager.h"
-#include "Util.h"
-#include "Settings.h"
 #include "Offsets.h"
+#include "Settings.h"
+#include "Util.h"
 
 namespace EHKS
 {
@@ -106,7 +106,6 @@ namespace EHKS
 				}
 				else if (a_event->device == RE::INPUT_DEVICE::kGamepad)
 				{
-
 				}
 			}
 		}

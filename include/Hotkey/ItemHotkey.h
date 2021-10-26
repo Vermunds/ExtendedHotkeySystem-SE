@@ -6,7 +6,7 @@ namespace EHKS
 	class ItemHotkey : public Hotkey
 	{
 	public:
-		RE::TESForm*	   GetBaseForm();
+		RE::TESForm* GetBaseForm();
 		RE::ExtraDataList* GetExtraData();
 
 		std::uint8_t extraDataId;

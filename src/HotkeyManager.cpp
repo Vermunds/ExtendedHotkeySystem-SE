@@ -37,11 +37,11 @@ namespace EHKS
 
 		switch (a_form->formType.get())
 		{
-			case (FormType::Spell):
-			case (FormType::Shout):
-				return Hotkey::HotkeyType::kMagic;
-			default:
-				return Hotkey::HotkeyType::kItem;
+		case (FormType::Spell):
+		case (FormType::Shout):
+			return Hotkey::HotkeyType::kMagic;
+		default:
+			return Hotkey::HotkeyType::kItem;
 		}
 	}
 
@@ -64,7 +64,8 @@ namespace EHKS
 		std::list<RE::InventoryEntryData*> hotkeyedItems;
 
 		//Iterate inventory
-		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it) {
+		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it)
+		{
 			RE::InventoryEntryData* entryData = it->second.second.get();
 
 			if (!entryData->extraLists)
@@ -96,7 +97,8 @@ namespace EHKS
 
 		//Iterate hotkeys
 		std::list<Hotkey*>::iterator it = this->hotkeys.begin();
-		while (it != this->hotkeys.end()) {
+		while (it != this->hotkeys.end())
+		{
 			Hotkey* hotkey = *it;
 
 			bool isHotkeyValid = false;
@@ -165,7 +167,8 @@ namespace EHKS
 
 		//Check vampire hotkeys
 		std::list<MagicHotkey*>::iterator vampire_it = this->vampireHotkeys.begin();
-		while (vampire_it != this->vampireHotkeys.end()) {
+		while (vampire_it != this->vampireHotkeys.end())
+		{
 			MagicHotkey* hotkey = *vampire_it;
 			if (!IsVampireSpell(hotkey->form))
 			{
@@ -197,7 +200,6 @@ namespace EHKS
 		return result;
 	}
 
-
 	ItemHotkey* HotkeyManager::GetItemHotkey(RE::InventoryEntryData* a_entryData)
 	{
 		if (!a_entryData->extraLists)
@@ -206,7 +208,8 @@ namespace EHKS
 		}
 
 		//Iterate hotkeys
-		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
+		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it)
+		{
 			Hotkey* hotkey = *it;
 
 			if (hotkey->type == Hotkey::HotkeyType::kItem)
@@ -236,7 +239,8 @@ namespace EHKS
 
 	MagicHotkey* HotkeyManager::GetMagicHotkey(RE::TESForm* a_form)
 	{
-		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
+		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it)
+		{
 			Hotkey* hotkey = *it;
 			if (hotkey->type == Hotkey::HotkeyType::kMagic)
 			{
@@ -252,7 +256,8 @@ namespace EHKS
 
 	MagicHotkey* HotkeyManager::GetVampireHotkey(RE::TESForm* a_form)
 	{
-		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it) {
+		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it)
+		{
 			MagicHotkey* hotkey = *it;
 			if (hotkey->form == a_form)
 			{
@@ -264,7 +269,8 @@ namespace EHKS
 
 	Hotkey* HotkeyManager::GetHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
-		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
+		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it)
+		{
 			Hotkey* hotkey = *it;
 			if (hotkey->device == a_deviceType && hotkey->keyMask == a_keyMask)
 			{
@@ -276,7 +282,8 @@ namespace EHKS
 
 	MagicHotkey* HotkeyManager::GetVampireHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
-		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it) {
+		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it)
+		{
 			MagicHotkey* hotkey = *it;
 			if (hotkey->device == a_deviceType && hotkey->keyMask == a_keyMask)
 			{
@@ -288,8 +295,8 @@ namespace EHKS
 
 	bool HotkeyManager::RemoveHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
-		
-		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it) {
+		for (std::list<Hotkey*>::iterator it = this->hotkeys.begin(); it != this->hotkeys.end(); ++it)
+		{
 			Hotkey* hotkey = *it;
 			if (hotkey->device == a_deviceType && hotkey->keyMask == a_keyMask)
 			{
@@ -301,7 +308,7 @@ namespace EHKS
 						RE::ExtraHotkey* extraHotkey = static_cast<RE::ExtraHotkey*>(extraData->GetByType(RE::ExtraDataType::kHotkey));
 						if (extraHotkey)
 						{
-							extraHotkey->hotkey = RE::ExtraHotkey::Hotkey::kUnbound; //0xFF
+							extraHotkey->hotkey = RE::ExtraHotkey::Hotkey::kUnbound;  //0xFF
 						}
 					}
 				}
@@ -314,7 +321,8 @@ namespace EHKS
 
 	bool HotkeyManager::RemoveVampireHotkey(RE::INPUT_DEVICE a_deviceType, std::uint32_t a_keyMask)
 	{
-		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it) {
+		for (std::list<MagicHotkey*>::iterator it = this->vampireHotkeys.begin(); it != this->vampireHotkeys.end(); ++it)
+		{
 			Hotkey* hotkey = *it;
 			if (hotkey->device == a_deviceType && hotkey->keyMask == a_keyMask)
 			{
@@ -382,7 +390,6 @@ namespace EHKS
 		{
 			RemoveHotkey(existingHotkey->device, existingHotkey->keyMask);
 		}
-
 
 		MagicHotkey* hotkey = new MagicHotkey();
 		hotkey->device = a_deviceType;

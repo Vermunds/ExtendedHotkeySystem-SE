@@ -64,6 +64,6 @@ namespace EHKS
 	{
 		RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
 		return (a_userEvent == userEvents->hotkey1 || a_userEvent == userEvents->hotkey2 || a_userEvent == userEvents->hotkey3 || a_userEvent == userEvents->hotkey4 ||
-			a_userEvent == userEvents->hotkey5 || a_userEvent == userEvents->hotkey6 || a_userEvent == userEvents->hotkey7 || a_userEvent == userEvents->hotkey8);
+				a_userEvent == userEvents->hotkey5 || a_userEvent == userEvents->hotkey6 || a_userEvent == userEvents->hotkey7 || a_userEvent == userEvents->hotkey8);
 	}
 }

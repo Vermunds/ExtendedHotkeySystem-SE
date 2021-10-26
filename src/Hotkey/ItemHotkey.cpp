@@ -8,7 +8,8 @@ namespace EHKS
 		RE::TESObjectREFR::InventoryItemMap inventory = player->GetInventory();
 
 		//Iterate inventory
-		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it) {
+		for (RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.begin(); it != inventory.end(); ++it)
+		{
 			RE::InventoryEntryData* entryData = it->second.second.get();
 
 			if (!entryData->extraLists)

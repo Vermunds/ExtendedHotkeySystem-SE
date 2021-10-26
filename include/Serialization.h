@@ -2,8 +2,8 @@
 
 #include "HotkeyManager.h"
 
-#include <vector>
 #include <list>
+#include <vector>
 
 #define SERIALIZATION_VERSION 3
 

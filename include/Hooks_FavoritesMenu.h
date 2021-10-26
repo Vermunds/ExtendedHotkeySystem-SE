@@ -5,11 +5,11 @@ namespace EHKS
 	class FavoritesMenuEx : public RE::FavoritesMenu
 	{
 	public:
-		RE::UI_MESSAGE_RESULTS ProcessMessage_Hook(RE::UIMessage& a_message); // 04
+		RE::UI_MESSAGE_RESULTS ProcessMessage_Hook(RE::UIMessage& a_message);   // 04
 		void AdvanceMovie_Hook(float a_interval, std::uint32_t a_currentTime);  // 05
 
-		bool CanProcess_Hook(RE::InputEvent* a_event); // 01
-		bool ProcessButton_Hook(RE::ButtonEvent* a_event); // 05
+		bool CanProcess_Hook(RE::InputEvent* a_event);      // 01
+		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 05
 
 		void UpdateHotkeyIcons(bool a_controllerMode);
 		static void InstallHook();
@@ -27,4 +27,3 @@ namespace EHKS
 		static inline REL::Relocation<ProcessButton_t> _ProcessButton;
 	};
 }
-

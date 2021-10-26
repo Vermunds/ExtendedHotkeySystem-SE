@@ -1,11 +1,11 @@
 ﻿#include "version.h"
-#include "Settings.h"
 #include "Serialization.h"
+#include "Settings.h"
 
 #include "Hooks_FavoritesHandler.h"
 #include "Hooks_FavoritesMenu.h"
 
-constexpr auto MESSAGE_BOX_TYPE = 0x00001010L; // MB_OK | MB_ICONERROR | MB_SYSTEMMODAL
+constexpr auto MESSAGE_BOX_TYPE = 0x00001010L;  // MB_OK | MB_ICONERROR | MB_SYSTEMMODAL
 
 extern "C" {
 	DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
@@ -27,12 +27,14 @@ extern "C" {
 		a_info->name = Version::PROJECT.data();
 		a_info->version = Version::MAJOR;
 
-		if (a_skse->IsEditor()) {
+		if (a_skse->IsEditor())
+		{
 			SKSE::log::critical("Loaded in editor, marking as incompatible!");
 			return false;
 		}
 
-		if (a_skse->RuntimeVersion() < SKSE::RUNTIME_1_5_39) {
+		if (a_skse->RuntimeVersion() < SKSE::RUNTIME_1_5_39)
+		{
 			SKSE::log::critical("Unsupported runtime version " + a_skse->RuntimeVersion().string());
 			SKSE::WinAPI::MessageBox(nullptr, std::string("Unsupported runtime version " + a_skse->RuntimeVersion().string()).c_str(), "Extended Hotkey System - Error", MESSAGE_BOX_TYPE);
 			return false;

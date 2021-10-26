@@ -10,8 +10,8 @@ namespace EHKS
 	private:
 		static Settings* singleton;
 		Settings();
-	public:
 
+	public:
 		struct Button
 		{
 			RE::INPUT_DEVICE inputDevice;
@@ -20,11 +20,11 @@ namespace EHKS
 
 		//bool					dualWieldSupport;
 
-		Button					modifierKey;
+		Button modifierKey;
 
-		bool					useWhiteList;
-		std::vector<Button>		whitelist;
-		bool					allowOverride;
+		bool useWhiteList;
+		std::vector<Button> whitelist;
+		bool allowOverride;
 
 		bool IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id);
 

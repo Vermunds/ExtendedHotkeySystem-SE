@@ -2,8 +2,6 @@
 
 namespace EHKS
 {
-	HotkeyManager* HotkeyManager::singleton = nullptr;
-
 	void HotkeyManager::SetHotkeyExtraData(RE::InventoryEntryData* a_entryData, std::uint8_t a_id)
 	{
 		//Remove all existing hotkey extra data
@@ -47,11 +45,8 @@ namespace EHKS
 
 	HotkeyManager* HotkeyManager::GetSingleton()
 	{
-		if (!singleton)
-		{
-			singleton = new HotkeyManager();
-		}
-		return singleton;
+		static HotkeyManager singleton;
+		return &singleton;
 	}
 
 	std::uint8_t HotkeyManager::UpdateHotkeys()

@@ -7,10 +7,6 @@ namespace EHKS
 {
 	class Settings
 	{
-	private:
-		static Settings* singleton;
-		Settings();
-
 	public:
 		struct Button
 		{
@@ -29,6 +25,12 @@ namespace EHKS
 		bool IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id);
 
 		static Settings* GetSingleton();
+
+	private:
+		Settings(){};
+		~Settings(){};
+		Settings(const Settings&) = delete;
+		Settings& operator=(const Settings&) = delete;
 	};
 
 	extern void LoadSettings();

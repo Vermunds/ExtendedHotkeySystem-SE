@@ -7,18 +7,10 @@
 
 namespace EHKS
 {
-	Settings* Settings::singleton = nullptr;
-	Settings::Settings(){
-
-	};
-
 	Settings* Settings::GetSingleton()
 	{
-		if (!singleton)
-		{
-			singleton = new Settings();
-		}
-		return singleton;
+		static Settings singleton;
+		return &singleton;
 	}
 
 	bool Settings::IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id)

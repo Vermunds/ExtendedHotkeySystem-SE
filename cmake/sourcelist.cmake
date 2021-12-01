@@ -5,7 +5,6 @@ set(SOURCES
 	include/Hotkey/ItemHotkey.h
 	include/Hotkey/MagicHotkey.h
 	include/HotkeyManager.h
-	include/Offsets.h
 	include/PCH.h
 	include/Serialization.h
 	include/Settings.h

@@ -1,7 +1,6 @@
 #include "Hooks_FavoritesMenu.h"
 
 #include "HotkeyManager.h"
-#include "Offsets.h"
 #include "Settings.h"
 #include "Util.h"
 
@@ -58,9 +57,8 @@ namespace EHKS
 		using EHKS::HotkeyManager;
 
 		RE::UI* ui = RE::UI::GetSingleton();
-		RE::InterfaceStrings* interfaceStrings = RE::InterfaceStrings::GetSingleton();
 
-		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(interfaceStrings->favoritesMenu).get());
+		RE::FavoritesMenu* favoritesMenu = static_cast<RE::FavoritesMenu*>(ui->GetMenu(RE::FavoritesMenu::MENU_NAME).get());
 
 		if (favoritesMenu)
 		{

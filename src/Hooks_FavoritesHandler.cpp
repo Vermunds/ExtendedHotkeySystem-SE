@@ -1,7 +1,6 @@
 #include "Hooks_FavoritesHandler.h"
 
 #include "HotkeyManager.h"
-#include "Offsets.h"
 #include "Settings.h"
 #include "Util.h"
 
@@ -21,14 +20,13 @@ namespace EHKS
 
 	bool IsEquipped(RE::TESForm* a_form)
 	{
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::InventoryChanges* invChanges = player->GetInventoryChanges();
-
-		if (invChanges)
+		// The function got inlined in AE, call the papyrus function instead
+		// The first two args are not used, unless a_form is null (make sure it isn't!)
+		if (a_form)
 		{
-			using func_t = std::uint64_t (*)(RE::TESForm*, RE::InventoryChanges*);
-			REL::Relocation<func_t> func(REL::ID{ 53982 });
-			return func(a_form, invChanges);
+			using func_t = std::uint64_t (*)(void*, std::uint32_t, RE::Actor*, RE::TESForm*);
+			REL::Relocation<func_t> func(REL::ID{ 54707 });
+			return func(nullptr, 0, RE::PlayerCharacter::GetSingleton(), a_form);
 		}
 		return false;
 	}
@@ -91,125 +89,10 @@ namespace EHKS
 
 	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData)
 	{
-		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
-		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-
-		RE::BGSEquipSlot* rightHandSlot = nullptr;
-		RE::BGSEquipSlot* leftHandSlot = nullptr;
-
-		if (objManager->IsInitialized())
-		{
-			rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
-			leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
-		}
-
-		switch (a_item->formType.get())
-		{
-		case RE::FormType::Armor:
-			{
-				RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(a_item);
-
-				if (IsEquipped(item))
-				{
-					em->UnequipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::Weapon:
-			{
-				RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
-				if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
-				{
-					//Item already equipped
-					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::Light:
-			{
-				RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(a_item);
-				if (a_item == player->currentProcess->GetEquippedLeftHand() || a_item == player->currentProcess->GetEquippedRightHand())
-				{
-					//Item already equipped
-					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::AlchemyItem:
-			{
-				RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(a_item);
-				em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				break;
-			}
-		case RE::FormType::Ingredient:
-			{
-				RE::IngredientItem* item = static_cast<RE::IngredientItem*>(a_item);
-				em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-				break;
-			}
-		case RE::FormType::Spell:
-			{
-				RE::SpellItem* item = static_cast<RE::SpellItem*>(a_item);
-				if (item->IsTwoHanded())
-				{
-					em->EquipSpell(player, item, item->GetEquipSlot());
-				}
-				else
-				{
-					if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
-					{
-						//Equip spell to left hand
-						em->EquipSpell(player, item, leftHandSlot);
-					}
-					else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
-					{
-						//Equip spell to right hand
-						em->EquipSpell(player, item, rightHandSlot);
-					}
-				}
-
-				return;  //Nothing to equip
-			}
-		case RE::FormType::Shout:
-			{
-				RE::TESShout* item = static_cast<RE::TESShout*>(a_item);
-				em->EquipShout(player, item);
-				break;
-			}
-		case RE::FormType::Ammo:
-			{
-				RE::TESAmmo* item = static_cast<RE::TESAmmo*>(a_item);
-				if (IsEquipped(item))
-				{
-					em->UnequipObject(player, item, nullptr, 1, nullptr);
-				}
-				else
-				{
-					em->EquipObject(player, item, a_extraData, 1, nullptr);
-				}
-				break;
-			}
-		case RE::FormType::Scroll:
-			{
-				RE::ScrollItem* item = static_cast<RE::ScrollItem*>(a_item);
-				em->EquipObject(player, item, a_extraData, 1, nullptr);
-				break;
-			}
-		}
-		RE::PlaySound("UIFavorite");
+		EquipTaskDelegate* task = new EquipTaskDelegate();
+		task->item = a_item;
+		task->extraData = a_extraData;
+		SKSE::GetTaskInterface()->AddTask(reinterpret_cast<TaskDelegate*>(task));
 	}
 
 	bool FavoritesHandlerEx::ProcessButton_Hook(RE::ButtonEvent* a_event)
@@ -220,13 +103,11 @@ namespace EHKS
 
 		if (a_event->userEvent == userEvents->favorites)
 		{
-			RE::UIMessageQueue* messageQueue = RE::UIMessageQueue::GetSingleton();
 			RE::UI* ui = RE::UI::GetSingleton();
-			RE::InterfaceStrings* strHolder = RE::InterfaceStrings::GetSingleton();
-
-			if (!ui->IsMenuOpen(strHolder->favoritesMenu))
+			if (!ui->IsMenuOpen(RE::FavoritesMenu::MENU_NAME) && !ui->GameIsPaused())
 			{
-				messageQueue->AddMessage(strHolder->favoritesMenu, RE::UI_MESSAGE_TYPE::kShow, 0);
+				RE::UIMessageQueue* messageQueue = RE::UIMessageQueue::GetSingleton();
+				messageQueue->AddMessage(RE::FavoritesMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, 0);
 				return true;
 			}
 		}
@@ -274,11 +155,140 @@ namespace EHKS
 		return false;
 	}
 
+	void EquipTaskDelegate::Run()
+	{
+		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
+		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
+		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+
+		RE::BGSEquipSlot* rightHandSlot = nullptr;
+		RE::BGSEquipSlot* leftHandSlot = nullptr;
+
+		if (objManager->IsInitialized())
+		{
+			rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
+			leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
+		}
+
+		switch (this->item->formType.get())
+		{
+		case RE::FormType::Armor:
+			{
+				RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(this->item);
+
+				if (IsEquipped(item))
+				{
+					em->UnequipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				}
+				else
+				{
+					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				}
+				break;
+			}
+		case RE::FormType::Weapon:
+			{
+				RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(this->item);
+				if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
+				{
+					//Item already equipped
+					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
+				}
+				else
+				{
+					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				}
+				break;
+			}
+		case RE::FormType::Light:
+			{
+				RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(this->item);
+				if (this->item == player->currentProcess->GetEquippedLeftHand() || this->item == player->currentProcess->GetEquippedRightHand())
+				{
+					//Item already equipped
+					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
+				}
+				else
+				{
+					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				}
+				break;
+			}
+		case RE::FormType::AlchemyItem:
+			{
+				RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(this->item);
+				em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				break;
+			}
+		case RE::FormType::Ingredient:
+			{
+				RE::IngredientItem* item = static_cast<RE::IngredientItem*>(this->item);
+				em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
+				break;
+			}
+		case RE::FormType::Spell:
+			{
+				RE::SpellItem* item = static_cast<RE::SpellItem*>(this->item);
+				if (item->IsTwoHanded())
+				{
+					em->EquipSpell(player, item, item->GetEquipSlot());
+				}
+				else
+				{
+					if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
+					{
+						//Equip spell to left hand
+						em->EquipSpell(player, item, leftHandSlot);
+					}
+					else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
+					{
+						//Equip spell to right hand
+						em->EquipSpell(player, item, rightHandSlot);
+					}
+				}
+
+				return;  //Nothing to equip
+			}
+		case RE::FormType::Shout:
+			{
+				RE::TESShout* item = static_cast<RE::TESShout*>(this->item);
+				em->EquipShout(player, item);
+				break;
+			}
+		case RE::FormType::Ammo:
+			{
+				RE::TESAmmo* item = static_cast<RE::TESAmmo*>(this->item);
+				if (IsEquipped(item))
+				{
+					em->UnequipObject(player, item, nullptr, 1, nullptr);
+				}
+				else
+				{
+					em->EquipObject(player, item, this->extraData, 1, nullptr);
+				}
+				break;
+			}
+		case RE::FormType::Scroll:
+			{
+				RE::ScrollItem* item = static_cast<RE::ScrollItem*>(this->item);
+				em->EquipObject(player, item, this->extraData, 1, nullptr);
+				break;
+			}
+		}
+		RE::PlaySound("UIFavorite");
+	}
+
+	void EquipTaskDelegate::Dispose()
+	{
+		delete this;
+	}
+
 	void FavoritesHandlerEx::InstallHook()
 	{
-		SKSE::GetTrampoline().write_call<6>(Offsets::FavoritesHandler_IsHotkey_Hook.address() + 0x2F, (uintptr_t)IsHotkey_Hook);
+		REL::ID favoritesHandler_IsHotkey_Hook{ 52258 };
+		SKSE::GetTrampoline().write_call<6>(favoritesHandler_IsHotkey_Hook.address() + 0x2F, (uintptr_t)IsHotkey_Hook);
 		std::uint8_t codes[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
-		REL::safe_write(Offsets::FavoritesHandler_IsHotkey_Hook.address() + 0x2F + 0x6, codes, sizeof(codes));
+		REL::safe_write(favoritesHandler_IsHotkey_Hook.address() + 0x2F + 0x6, codes, sizeof(codes));
 
 		REL::Relocation<std::uintptr_t> vTable(RE::Offset::FavoritesHandler::Vtbl);
 		_ProcessButton = vTable.write_vfunc(0x5, &FavoritesHandlerEx::ProcessButton_Hook);

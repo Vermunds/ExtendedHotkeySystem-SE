@@ -43,7 +43,10 @@ namespace EHKS
 		void SetHotkeys(std::list<Hotkey*> a_hotkeys, std::list<Hotkey*> a_vampireHotkeys);
 
 	private:
-		static HotkeyManager* singleton;
+		HotkeyManager(){};
+		~HotkeyManager(){};
+		HotkeyManager(const HotkeyManager&) = delete;
+		HotkeyManager& operator=(const HotkeyManager&) = delete;
 
 		std::list<Hotkey*> hotkeys;
 		std::list<MagicHotkey*> vampireHotkeys;

@@ -1,14 +1,25 @@
-﻿#include "version.h"
 #include "Serialization.h"
 #include "Settings.h"
+#include "version.h"
 
 #include "Hooks_FavoritesHandler.h"
 #include "Hooks_FavoritesMenu.h"
 
-constexpr auto MESSAGE_BOX_TYPE = 0x00001010L;  // MB_OK | MB_ICONERROR | MB_SYSTEMMODAL
-
 extern "C" {
-	DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+
+	DLLEXPORT SKSE::PluginVersionData SKSEPlugin_Version = []() {
+		SKSE::PluginVersionData v{};
+		v.PluginVersion(REL::Version{ Version::MAJOR, Version::MINOR, Version::PATCH, 0 });
+		v.PluginName(Version::PROJECT);
+		v.AuthorName("Vermunds"sv);
+		v.CompatibleVersions({ SKSE::RUNTIME_1_6_318 });
+
+		v.addressLibrary = true;
+		v.sigScanning = false;
+		return v;
+	}();
+
+	DLLEXPORT bool SKSEPlugin_Load(SKSE::LoadInterface* a_skse)
 	{
 		assert(SKSE::log::log_directory().has_value());
 		auto path = SKSE::log::log_directory().value() / std::filesystem::path("ExtendedHotkeySystem.log");
@@ -23,36 +34,18 @@ extern "C" {
 
 		SKSE::log::info("Extended Hotkey System v" + std::string(Version::NAME) + " - (" + std::string(__TIMESTAMP__) + ")");
 
-		a_info->infoVersion = SKSE::PluginInfo::kVersion;
-		a_info->name = Version::PROJECT.data();
-		a_info->version = Version::MAJOR;
-
 		if (a_skse->IsEditor())
 		{
 			SKSE::log::critical("Loaded in editor, marking as incompatible!");
 			return false;
 		}
 
-		if (a_skse->RuntimeVersion() < SKSE::RUNTIME_1_5_39)
-		{
-			SKSE::log::critical("Unsupported runtime version " + a_skse->RuntimeVersion().string());
-			SKSE::WinAPI::MessageBox(nullptr, std::string("Unsupported runtime version " + a_skse->RuntimeVersion().string()).c_str(), "Extended Hotkey System - Error", MESSAGE_BOX_TYPE);
-			return false;
-		}
-
-		SKSE::AllocTrampoline(1 << 4, true);
-
-		return true;
-	}
-
-	DLLEXPORT bool SKSEPlugin_Load(SKSE::LoadInterface* a_skse)
-	{
+		SKSE::AllocTrampoline(1 << 5, true);
 		SKSE::Init(a_skse);
 
 		auto serialization = SKSE::GetSerializationInterface();
 		if (!serialization)
 		{
-			SKSE::WinAPI::MessageBox(nullptr, "Couldn't get SKSE serialization interface!", "Extended Hotkey System - Error", MESSAGE_BOX_TYPE);
 			return false;
 		}
 		serialization->SetUniqueID('EHKS');
@@ -67,7 +60,7 @@ extern "C" {
 		EHKS::FavoritesHandlerEx::InstallHook();
 		EHKS::FavoritesMenuEx::InstallHook();
 
-		SKSE::log::info("Extended Hotkey System loaded.");
+		SKSE::log::info("Hooks installed.");
 
 		return true;
 	}

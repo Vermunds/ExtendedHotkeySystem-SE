@@ -1,7 +1,18 @@
 #pragma once
+#include <SKSE/Impl/Stubs.h>
 
 namespace EHKS
 {
+	class EquipTaskDelegate : public SKSE::detail::TaskDelegate
+	{
+	public:
+		RE::TESForm* item;
+		RE::ExtraDataList* extraData;
+
+		virtual void Run() override;
+		virtual void Dispose() override;
+	};
+
 	class FavoritesHandlerEx : public RE::FavoritesHandler
 	{
 	public:

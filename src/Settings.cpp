@@ -1,6 +1,7 @@
 #include "Settings.h"
 
-#include "SimpleIni.h"
+#include <SimpleIni.h>
+
 #include <sstream>
 #include <string>
 #include <vector>

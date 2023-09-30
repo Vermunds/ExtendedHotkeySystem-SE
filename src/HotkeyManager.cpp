@@ -23,7 +23,7 @@ namespace EHKS
 		}
 		else
 		{
-			RE::ExtraHotkey* extraHotkey = RE::BSExtraData::Create<RE::ExtraHotkey>(RE::Offset::ExtraHotkey::Vtbl.address());
+			RE::ExtraHotkey* extraHotkey = RE::BSExtraData::Create<RE::ExtraHotkey>();
 			extraHotkey->hotkey = static_cast<RE::ExtraHotkey::Hotkey>(a_id);
 			a_entryData->extraLists->front()->Add(extraHotkey);
 		}

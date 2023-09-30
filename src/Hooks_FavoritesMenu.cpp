@@ -229,7 +229,7 @@ namespace EHKS
 
 	void FavoritesMenuEx::InstallHook()
 	{
-		REL::Relocation<std::uintptr_t> vTable(RE::Offset::FavoritesMenu::Vtbl);
+		REL::Relocation<std::uintptr_t> vTable(RE::VTABLE_FavoritesMenu[0]);
 
 		_ProcessMessage = vTable.write_vfunc(0x4, &FavoritesMenuEx::ProcessMessage_Hook);
 		_AdvanceMovie = vTable.write_vfunc(0x5, &FavoritesMenuEx::AdvanceMovie_Hook);

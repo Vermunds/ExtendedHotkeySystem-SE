@@ -4,6 +4,7 @@
 
 #include "Hooks_FavoritesHandler.h"
 #include "Hooks_FavoritesMenu.h"
+#include "TaskQueue.h"
 
 extern "C"
 {
@@ -50,6 +51,7 @@ extern "C"
 
 		EHKS::FavoritesHandlerEx::InstallHook();
 		EHKS::FavoritesMenuEx::InstallHook();
+		EHKS::TaskQueue::InstallHook();
 
 		SKSE::log::info("Hooks installed.");
 

@@ -2,6 +2,7 @@
 
 #include "HotkeyManager.h"
 #include "Settings.h"
+#include "TaskQueue.h"
 #include "Util.h"
 
 namespace EHKS
@@ -89,10 +90,134 @@ namespace EHKS
 
 	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData)
 	{
-		EquipTaskDelegate* task = new EquipTaskDelegate();
-		task->item = a_item;
-		task->extraData = a_extraData;
-		SKSE::GetTaskInterface()->AddTask(reinterpret_cast<TaskDelegate*>(task));
+		auto task = [a_item, a_extraData]() {
+			RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
+			RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
+			RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+
+			if (!a_item)
+			{
+				return;
+			}
+
+			RE::BGSEquipSlot* rightHandSlot = nullptr;
+			RE::BGSEquipSlot* leftHandSlot = nullptr;
+
+			if (objManager->IsInitialized())
+			{
+				rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
+				leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
+			}
+
+			switch (a_item->formType.get())
+			{
+			case RE::FormType::Armor:
+				{
+					RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(a_item);
+
+					if (IsEquipped(item))
+					{
+						em->UnequipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					}
+					else
+					{
+						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					}
+					break;
+				}
+			case RE::FormType::Weapon:
+				{
+					RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
+					if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
+					{
+						//Item already equipped
+						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
+					}
+					else
+					{
+						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					}
+					break;
+				}
+			case RE::FormType::Light:
+				{
+					RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(a_item);
+					if (a_item == player->currentProcess->GetEquippedLeftHand() || a_item == player->currentProcess->GetEquippedRightHand())
+					{
+						//Item already equipped
+						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
+					}
+					else
+					{
+						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					}
+					break;
+				}
+			case RE::FormType::AlchemyItem:
+				{
+					RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(a_item);
+					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					break;
+				}
+			case RE::FormType::Ingredient:
+				{
+					RE::IngredientItem* item = static_cast<RE::IngredientItem*>(a_item);
+					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+					break;
+				}
+			case RE::FormType::Spell:
+				{
+					RE::SpellItem* item = static_cast<RE::SpellItem*>(a_item);
+					if (item->IsTwoHanded())
+					{
+						em->EquipSpell(player, item, item->GetEquipSlot());
+					}
+					else
+					{
+						if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
+						{
+							//Equip spell to left hand
+							em->EquipSpell(player, item, leftHandSlot);
+						}
+						else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
+						{
+							//Equip spell to right hand
+							em->EquipSpell(player, item, rightHandSlot);
+						}
+					}
+
+					return;  //Nothing to equip
+				}
+			case RE::FormType::Shout:
+				{
+					RE::TESShout* item = static_cast<RE::TESShout*>(a_item);
+					em->EquipShout(player, item);
+					break;
+				}
+			case RE::FormType::Ammo:
+				{
+					RE::TESAmmo* item = static_cast<RE::TESAmmo*>(a_item);
+					if (IsEquipped(item))
+					{
+						em->UnequipObject(player, item, nullptr, 1, nullptr);
+					}
+					else
+					{
+						em->EquipObject(player, item, a_extraData, 1, nullptr);
+					}
+					break;
+				}
+			case RE::FormType::Scroll:
+				{
+					RE::ScrollItem* item = static_cast<RE::ScrollItem*>(a_item);
+					em->EquipObject(player, item, a_extraData, 1, nullptr);
+					break;
+				}
+			}
+			RE::PlaySound("UIFavorite");
+		};
+
+		TaskQueue::GetSingleton()->AddTask(task);
 	}
 
 	bool FavoritesHandlerEx::ProcessButton_Hook(RE::ButtonEvent* a_event)
@@ -153,134 +278,6 @@ namespace EHKS
 			}
 		}
 		return false;
-	}
-
-	void EquipTaskDelegate::Run()
-	{
-		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
-		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-
-		RE::BGSEquipSlot* rightHandSlot = nullptr;
-		RE::BGSEquipSlot* leftHandSlot = nullptr;
-
-		if (objManager->IsInitialized())
-		{
-			rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
-			leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
-		}
-
-		switch (this->item->formType.get())
-		{
-		case RE::FormType::Armor:
-			{
-				RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(this->item);
-
-				if (IsEquipped(item))
-				{
-					em->UnequipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::Weapon:
-			{
-				RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(this->item);
-				if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
-				{
-					//Item already equipped
-					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::Light:
-			{
-				RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(this->item);
-				if (this->item == player->currentProcess->GetEquippedLeftHand() || this->item == player->currentProcess->GetEquippedRightHand())
-				{
-					//Item already equipped
-					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-				}
-				else
-				{
-					em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				}
-				break;
-			}
-		case RE::FormType::AlchemyItem:
-			{
-				RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(this->item);
-				em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				break;
-			}
-		case RE::FormType::Ingredient:
-			{
-				RE::IngredientItem* item = static_cast<RE::IngredientItem*>(this->item);
-				em->EquipObject(player, item, this->extraData, 1, item->GetEquipSlot());
-				break;
-			}
-		case RE::FormType::Spell:
-			{
-				RE::SpellItem* item = static_cast<RE::SpellItem*>(this->item);
-				if (item->IsTwoHanded())
-				{
-					em->EquipSpell(player, item, item->GetEquipSlot());
-				}
-				else
-				{
-					if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
-					{
-						//Equip spell to left hand
-						em->EquipSpell(player, item, leftHandSlot);
-					}
-					else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
-					{
-						//Equip spell to right hand
-						em->EquipSpell(player, item, rightHandSlot);
-					}
-				}
-
-				return;  //Nothing to equip
-			}
-		case RE::FormType::Shout:
-			{
-				RE::TESShout* item = static_cast<RE::TESShout*>(this->item);
-				em->EquipShout(player, item);
-				break;
-			}
-		case RE::FormType::Ammo:
-			{
-				RE::TESAmmo* item = static_cast<RE::TESAmmo*>(this->item);
-				if (IsEquipped(item))
-				{
-					em->UnequipObject(player, item, nullptr, 1, nullptr);
-				}
-				else
-				{
-					em->EquipObject(player, item, this->extraData, 1, nullptr);
-				}
-				break;
-			}
-		case RE::FormType::Scroll:
-			{
-				RE::ScrollItem* item = static_cast<RE::ScrollItem*>(this->item);
-				em->EquipObject(player, item, this->extraData, 1, nullptr);
-				break;
-			}
-		}
-		RE::PlaySound("UIFavorite");
-	}
-
-	void EquipTaskDelegate::Dispose()
-	{
-		delete this;
 	}
 
 	void FavoritesHandlerEx::InstallHook()

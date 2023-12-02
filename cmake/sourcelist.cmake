@@ -8,6 +8,7 @@ set(SOURCES
 	include/PCH.h
 	include/Serialization.h
 	include/Settings.h
+	include/TaskQueue.h
 	include/Util.h
 	src/Hooks_FavoritesHandler.cpp
 	src/Hooks_FavoritesMenu.cpp
@@ -15,6 +16,7 @@ set(SOURCES
 	src/HotkeyManager.cpp
 	src/Serialization.cpp
 	src/Settings.cpp
+	src/TaskQueue.cpp
 	src/Util.cpp
 	src/main.cpp
 )

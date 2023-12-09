@@ -225,11 +225,17 @@ namespace EHKS
 		using EHKS::HotkeyManager;
 
 		RE::UserEvents* userEvents = RE::UserEvents::GetSingleton();
+		RE::UI* ui = RE::UI::GetSingleton();
+
+		// Note: When used with Skyrim Souls RE, this input handler is already blocked
+		if (ui->GameIsPaused() || ui->IsMenuOpen(RE::CraftingMenu::MENU_NAME))
+		{
+			return false;
+		}
 
 		if (a_event->userEvent == userEvents->favorites)
 		{
-			RE::UI* ui = RE::UI::GetSingleton();
-			if (!ui->IsMenuOpen(RE::FavoritesMenu::MENU_NAME) && !ui->GameIsPaused())
+			if (!ui->IsMenuOpen(RE::FavoritesMenu::MENU_NAME))
 			{
 				RE::UIMessageQueue* messageQueue = RE::UIMessageQueue::GetSingleton();
 				messageQueue->AddMessage(RE::FavoritesMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, 0);

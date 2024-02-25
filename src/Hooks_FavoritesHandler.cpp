@@ -128,7 +128,7 @@ namespace EHKS
 			case RE::FormType::Weapon:
 				{
 					RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
-					if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
+					if (item == player->GetActorRuntimeData().currentProcess->GetEquippedLeftHand() || item == player->GetActorRuntimeData().currentProcess->GetEquippedRightHand())
 					{
 						//Item already equipped
 						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
@@ -142,7 +142,7 @@ namespace EHKS
 			case RE::FormType::Light:
 				{
 					RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(a_item);
-					if (a_item == player->currentProcess->GetEquippedLeftHand() || a_item == player->currentProcess->GetEquippedRightHand())
+					if (a_item == player->GetActorRuntimeData().currentProcess->GetEquippedLeftHand() || a_item == player->GetActorRuntimeData().currentProcess->GetEquippedRightHand())
 					{
 						//Item already equipped
 						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
@@ -174,12 +174,12 @@ namespace EHKS
 					}
 					else
 					{
-						if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
+						if (player->GetActorRuntimeData().selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
 						{
 							//Equip spell to left hand
 							em->EquipSpell(player, item, leftHandSlot);
 						}
-						else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
+						else if (player->GetActorRuntimeData().selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
 						{
 							//Equip spell to right hand
 							em->EquipSpell(player, item, rightHandSlot);

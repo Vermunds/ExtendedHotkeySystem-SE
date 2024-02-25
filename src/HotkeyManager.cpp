@@ -453,8 +453,8 @@ namespace EHKS
 		if (a_form->Is(RE::FormType::Spell))
 		{
 			RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
-			RE::BGSListForm* formList = static_cast<RE::BGSListForm*>(objManager->GetObject(RE::DEFAULT_OBJECT::kVampireSpells));
-			return formList->HasForm(a_form);
+			RE::BGSListForm* formList = static_cast<RE::BGSListForm*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kVampireSpells));
+			return formList ? formList->HasForm(a_form) : false;
 		}
 		return false;
 	}

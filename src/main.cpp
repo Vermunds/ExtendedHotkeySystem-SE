@@ -13,7 +13,9 @@ extern "C"
 		v.PluginVersion(REL::Version{ Version::MAJOR, Version::MINOR, Version::PATCH, 0 });
 		v.PluginName(Version::NAME);
 		v.AuthorName(Version::AUTHOR);
-		v.CompatibleVersions({ SKSE::RUNTIME_LATEST });
+		v.UsesAddressLibrary();
+		v.UsesStructsPost629();
+		v.CompatibleVersions({ SKSE::RUNTIME_SSE_1_6_640, SKSE::RUNTIME_SSE_LATEST_AE });
 		return v;
 	}();
 

@@ -76,13 +76,13 @@ namespace EHKS
 
 				if (isValidGamepadButton || (allowModifier && isValid) || isInWhitelist)
 				{
-					if (0 <= selectedIndex && selectedIndex < favoritesMenu->GetRuntimeData().favorites.size())
+					if (0 <= selectedIndex && selectedIndex < favoritesMenu->favorites.size())
 					{
-						RE::TESForm* selectedItem = favoritesMenu->GetRuntimeData().favorites[selectedIndex].item;
+						RE::TESForm* selectedItem = favoritesMenu->favorites[selectedIndex].item;
 
 						HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
 
-						if (favoritesMenu->GetRuntimeData().isVampire)
+						if (favoritesMenu->isVampire)
 						{
 							hotkeyManager->AddVampireHotkey(a_event->device.get(), a_event->idCode, selectedItem);
 						}
@@ -91,7 +91,7 @@ namespace EHKS
 							Hotkey::HotkeyType hotkeyType = HotkeyManager::GetHotkeyType(selectedItem);
 							if (hotkeyType == Hotkey::HotkeyType::kItem)
 							{
-								hotkeyManager->AddItemHotkey(a_event->device.get(), a_event->idCode, favoritesMenu->GetRuntimeData().favorites[selectedIndex].entryData);
+								hotkeyManager->AddItemHotkey(a_event->device.get(), a_event->idCode, favoritesMenu->favorites[selectedIndex].entryData);
 							}
 							else
 							{
@@ -168,7 +168,7 @@ namespace EHKS
 			return;
 		}
 
-		for (std::uint32_t i = 0; i < this->GetRuntimeData().favorites.size(); ++i)
+		for (std::uint32_t i = 0; i < this->favorites.size(); ++i)
 		{
 			RE::GFxValue entry, clipIndex, clip, hotkeyIcon;
 
@@ -193,9 +193,9 @@ namespace EHKS
 				continue;
 			}
 
-			if (this->GetRuntimeData().isVampire)
+			if (this->isVampire)
 			{
-				if (Hotkey* hotkey = hotkeyManager->GetVampireHotkey(this->GetRuntimeData().favorites[i].item))
+				if (Hotkey* hotkey = hotkeyManager->GetVampireHotkey(this->favorites[i].item))
 				{
 					SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
 					continue;
@@ -203,10 +203,10 @@ namespace EHKS
 			}
 			else
 			{
-				Hotkey::HotkeyType hotkeyType = HotkeyManager::GetHotkeyType(this->GetRuntimeData().favorites[i].item);
+				Hotkey::HotkeyType hotkeyType = HotkeyManager::GetHotkeyType(this->favorites[i].item);
 				if (hotkeyType == Hotkey::HotkeyType::kItem)
 				{
-					if (Hotkey* hotkey = hotkeyManager->GetItemHotkey(this->GetRuntimeData().favorites[i].entryData))
+					if (Hotkey* hotkey = hotkeyManager->GetItemHotkey(this->favorites[i].entryData))
 					{
 						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);
 						continue;
@@ -214,7 +214,7 @@ namespace EHKS
 				}
 				else
 				{
-					if (Hotkey* hotkey = hotkeyManager->GetMagicHotkey(this->GetRuntimeData().favorites[i].item))
+					if (Hotkey* hotkey = hotkeyManager->GetMagicHotkey(this->favorites[i].item))
 					{
 						//Hotkey found
 						SetHotkeyIcon(hotkeyIcon, hotkey->device, hotkey->keyMask, a_controllerMode);

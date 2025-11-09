@@ -13,7 +13,7 @@ This mod replaces Skyrim's hotkey system with a custom one, allowing you to use 
 - Allows you to use any keyboard or mouse button for hotkeys
 - Support for vampire lord abilities
 - Allows you to map hotkeys on the keyboard even if you use a controller.
-- Supports whitelisting (see below, disabled by default)
+- Supports whitelisting (by default the numeric buttons of 0-9 are whitelisted)
 
 ## Usage:
 Same as vanilla, but there is one extra step: you have to hold down the Left control when you assign the hotkey. This is necessary because the Favorites Menu can't tell the difference when you want to assign a hotkey and when you don't. So for example, if you want to set the F1 button as a hotkey, you press Ctrl + F1 when assigning it.

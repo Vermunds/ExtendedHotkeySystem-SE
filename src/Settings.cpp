@@ -6,6 +6,39 @@
 #include <string>
 #include <vector>
 
+namespace
+{
+	void IniSection(CSimpleIniA& a_ini, const char* a_section, const char* a_comment = nullptr)
+	{
+		a_ini.SetValue(a_section, nullptr, nullptr, a_comment);
+		SKSE::log::info("[{}]", a_section);
+	}
+
+	bool IniGetBool(CSimpleIniA& a_ini, const char* a_section, const char* a_key, bool a_default, const char* a_comment = nullptr)
+	{
+		bool val = a_ini.GetBoolValue(a_section, a_key, a_default);
+		a_ini.SetBoolValue(a_section, a_key, val, a_comment, true);
+		SKSE::log::info("  {}: {}", a_key, val);
+		return val;
+	}
+
+	std::uint32_t IniGetUInt(CSimpleIniA& a_ini, const char* a_section, const char* a_key, std::uint32_t a_default, const char* a_comment = nullptr)
+	{
+		std::uint32_t val = static_cast<std::uint32_t>(a_ini.GetLongValue(a_section, a_key, a_default));
+		a_ini.SetLongValue(a_section, a_key, val, a_comment, false, true);
+		SKSE::log::info("  {}: {}", a_key, val);
+		return val;
+	}
+
+	std::string IniGetString(CSimpleIniA& a_ini, const char* a_section, const char* a_key, const char* a_default, const char* a_comment = nullptr)
+	{
+		std::string val = a_ini.GetValue(a_section, a_key, a_default);
+		a_ini.SetValue(a_section, a_key, val.c_str(), a_comment, true);
+		SKSE::log::info("  {}: {}", a_key, val);
+		return val;
+	}
+}
+
 namespace EHKS
 {
 	Settings* Settings::GetSingleton()
@@ -51,23 +84,24 @@ namespace EHKS
 
 		Settings* settings = Settings::GetSingleton();
 
+		constexpr const char* iniPath = R"(.\Data\SKSE\Plugins\ExtendedHotkeySystem.ini)";
+
 		CSimpleIniA ini;
 		ini.SetUnicode();
-		ini.LoadFile(".\\Data\\SKSE\\Plugins\\ExtendedHotkeySystem.ini");
+		ini.LoadFile(iniPath);
 
-		//GENERAL
-		//settings->dualWieldSupport = ini.GetBoolValue("GENERAL", "bDualWieldSupport", false, false);
-		//ini.SetBoolValue("GENERAL", "bDualWieldSupport", settings->dualWieldSupport, "# Allows you to equip the same weapon to the left hand if it's already equipped to the right (instead of unequipping it)\n# Only works with the same weapons and enchantments.As a rule of thumb : if it stacks in the inventory, it will work, otherwise no.\n# Default value is false (disabled)", true);
+		SKSE::log::info("Loading settings from: {}", std::filesystem::absolute(iniPath).string());
 
-		std::uint32_t modifierKey = static_cast<std::uint32_t>(ini.GetLongValue("GENERAL", "iModifierKey", 29));
+		IniSection(ini, "GENERAL");
+		//settings->dualWieldSupport = IniGetBool(ini, "GENERAL", "bDualWieldSupport", false, "# Allows you to equip the same weapon to the left hand if it's already equipped to the right (instead of unequipping it)\n# Only works with the same weapons and enchantments.As a rule of thumb : if it stacks in the inventory, it will work, otherwise no.\n# Default value is false (disabled)");
+
+		std::uint32_t modifierKey = IniGetUInt(ini, "GENERAL", "iModifierKey", 29, "# The modifier key you have to press when assigning hotkeys in the favorites menu.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Example: iUnequipAllKeyCode = 45 is the the 'X' button.\n# Default value is 29, which is the left control key.");
 		settings->modifierKey = GetButtonObj(modifierKey);
-		ini.SetLongValue("GENERAL", "iModifierKey", modifierKey, "# The modifier key you have to press when assigning hotkeys in the favorites menu.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Example: iUnequipAllKeyCode = 45 is the the 'X' button.\n# Default value is 29, which is the left control key.", false, true);
 
-		//WHITELIST
-		settings->useWhiteList = ini.GetBoolValue("WHITELIST", "bEnableWhitelist", true);
-		ini.SetBoolValue("WHITELIST", "bEnableWhitelist", settings->useWhiteList, "# Enable or disable the button whitelist. If enabled, only whitelisted buttons can be set as a hotkey.\n# You don't have to hold down the modifier key to assign these hotkeys.\n# Default is 0 (disabled, modifier key is needed)", true);
+		IniSection(ini, "WHITELIST");
+		settings->useWhiteList = IniGetBool(ini, "WHITELIST", "bEnableWhitelist", true, "# Enable or disable the button whitelist. If enabled, only whitelisted buttons can be set as a hotkey.\n# You don't have to hold down the modifier key to assign these hotkeys.\n# Default is 0 (disabled, modifier key is needed)");
 
-		std::string whitelistStr = ini.GetValue("WHITELIST", "sWhitelist", "2,3,4,5,6,7,8,9,10,11");
+		std::string whitelistStr = IniGetString(ini, "WHITELIST", "sWhitelist", "2,3,4,5,6,7,8,9,10,11", "# The list of buttons that can be set as hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Separate the entries with commas(, ) do not use spaces or any other characters!\n# Example: sWhitelist = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 (these are the numeric buttons from 0 to 9)");
 		std::stringstream ss(whitelistStr);
 		std::vector<Button> whitelist;
 		while (ss.good())
@@ -77,10 +111,11 @@ namespace EHKS
 			whitelist.push_back(GetButtonObj(std::stoi(substr)));
 		}
 		settings->whitelist = whitelist;
-		ini.SetValue("WHITELIST", "sWhitelist", whitelistStr.c_str(), "# The list of buttons that can be set as hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Separate the entries with commas(, ) do not use spaces or any other characters!\n# Example: sWhitelist = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 (these are the numeric buttons from 0 to 9)", true);
 
-		settings->allowOverride = ini.GetBoolValue("WHITELIST", "bAllowWhitelistOverride", true);
-		ini.SetBoolValue("WHITELIST", "bAllowWhitelistOverride", settings->allowOverride, "# If enabled you can still use the Ctrl + hotkey combination to assign a hotkey outside of the whitelist.", true);
-		ini.SaveFile(".\\Data\\SKSE\\Plugins\\ExtendedHotkeySystem.ini");
+		settings->allowOverride = IniGetBool(ini, "WHITELIST", "bAllowWhitelistOverride", true, "# If enabled you can still use the Ctrl + hotkey combination to assign a hotkey outside of the whitelist.");
+
+		SKSE::log::info("Settings loaded.");
+
+		ini.SaveFile(iniPath);
 	}
 }

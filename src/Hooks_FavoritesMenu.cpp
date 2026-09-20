@@ -4,15 +4,17 @@
 #include "Settings.h"
 #include "Util.h"
 
+#include <ModConfigUI/Localization.h>
+
 namespace EHKS
 {
-	bool IsModifierKeyDown()
+	bool IsAssignmentKeyDown()
 	{
 		EHKS::Settings* settings = EHKS::Settings::GetSingleton();
 		RE::BSInputDeviceManager* inputDeviceManager = RE::BSInputDeviceManager::GetSingleton();
 
 		RE::BSInputDevice* inputDevice;
-		if (settings->modifierKey.inputDevice == RE::INPUT_DEVICE::kKeyboard)
+		if (settings->assignmentKey.inputDevice == RE::INPUT_DEVICE::kKeyboard)
 		{
 			inputDevice = inputDeviceManager->GetKeyboard();
 		}
@@ -20,14 +22,19 @@ namespace EHKS
 		{
 			inputDevice = inputDeviceManager->GetMouse();
 		}
-		return inputDevice->IsPressed(settings->modifierKey.id);
+		return inputDevice->IsPressed(settings->assignmentKey.id);
 	}
 
 	RE::UI_MESSAGE_RESULTS FavoritesMenuEx::ProcessMessage_Hook(RE::UIMessage& a_message)
 	{
+		if (a_message.type == RE::UI_MESSAGE_TYPE::kShow)
+		{
+			bool controllerMode = RE::BSInputDeviceManager::GetSingleton()->IsGamepadEnabled();
+			this->UpdateAssignHint(controllerMode);
+		}
 		if (a_message.type == RE::UI_MESSAGE_TYPE::kUserEvent || a_message.type == RE::UI_MESSAGE_TYPE::kScaleformEvent)
 		{
-			if (IsModifierKeyDown())
+			if (IsAssignmentKeyDown())
 			{
 				return RE::UI_MESSAGE_RESULTS::kIgnore;
 			}
@@ -37,7 +44,9 @@ namespace EHKS
 
 	void FavoritesMenuEx::AdvanceMovie_Hook(float a_interval, std::uint32_t a_currentTime)
 	{
-		this->UpdateHotkeyIcons(RE::BSInputDeviceManager::GetSingleton()->IsGamepadEnabled());
+		bool controllerMode = RE::BSInputDeviceManager::GetSingleton()->IsGamepadEnabled();
+		this->UpdateHotkeyIcons(controllerMode);
+		this->UpdateAssignHint(controllerMode);
 		this->_AdvanceMovie(this, a_interval, a_currentTime);
 	}
 
@@ -70,11 +79,11 @@ namespace EHKS
 				std::uint32_t selectedIndex = static_cast<std::uint32_t>(result.GetNumber());
 
 				bool isValidGamepadButton = a_event->device == RE::INPUT_DEVICE::kGamepad && EHKS::IsVanillaHotkey(a_event->userEvent);
-				bool allowModifier = !settings->useWhiteList || (settings->useWhiteList && settings->allowOverride);
-				bool isValid = IsModifierKeyDown() && a_event->idCode != settings->modifierKey.id;
-				bool isInWhitelist = settings->useWhiteList && settings->IsInWhitelist(a_event->device.get(), a_event->idCode);
+				bool allowAssignmentKey = !settings->useWhitelist || !settings->enforceWhitelist;
+				bool isValid = IsAssignmentKeyDown() && a_event->idCode != settings->assignmentKey.id;
+				bool isInWhitelist = settings->useWhitelist && settings->IsInWhitelist(a_event->device.get(), a_event->idCode);
 
-				if (isValidGamepadButton || (allowModifier && isValid) || isInWhitelist)
+				if (isValidGamepadButton || (allowAssignmentKey && isValid) || isInWhitelist)
 				{
 					if (0 <= selectedIndex && selectedIndex < favoritesMenu->favorites.size())
 					{
@@ -131,7 +140,7 @@ namespace EHKS
 		}
 		else if (a_device == RE::INPUT_DEVICE::kMouse)
 		{
-			str = std::to_string(a_keyMask + 256);
+			str = std::to_string(a_keyMask + SKSE::InputMap::kMacro_MouseButtonOffset);
 		}
 		else if (a_device == RE::INPUT_DEVICE::kGamepad)
 		{
@@ -225,6 +234,67 @@ namespace EHKS
 			//Hotkey not found
 			UnSetHotkeyIcon(hotkeyIcon);
 		}
+	}
+
+	bool GetAssignHintKey(bool a_controllerMode, std::uint32_t& a_key)
+	{
+		EHKS::Settings* settings = EHKS::Settings::GetSingleton();
+
+		if (a_controllerMode)
+		{
+			// Gamepad hotkeys are assigned with the vanilla buttons, the assignment key does not apply
+			return false;
+		}
+		if (settings->useWhitelist && settings->enforceWhitelist)
+		{
+			// The assignment key is disabled, only whitelisted keys can be assigned
+			return false;
+		}
+
+		if (settings->assignmentKey.inputDevice == RE::INPUT_DEVICE::kKeyboard)
+		{
+			a_key = settings->assignmentKey.id;
+			return true;
+		}
+		if (settings->assignmentKey.inputDevice == RE::INPUT_DEVICE::kMouse)
+		{
+			a_key = settings->assignmentKey.id + SKSE::InputMap::kMacro_MouseButtonOffset;
+			return true;
+		}
+
+		return false;
+	}
+
+	void FavoritesMenuEx::UpdateAssignHint(bool a_controllerMode)
+	{
+		RE::GFxValue showFunction;
+		if (!this->uiMovie->GetVariable(&showFunction, "_root.MenuHolder.Menu_mc.showEHKSHint") || showFunction.IsUndefined())
+		{
+			return;
+		}
+
+		RE::GFxValue shownKey;
+		this->uiMovie->GetVariable(&shownKey, "_root.MenuHolder.Menu_mc._ehksHintKey");
+
+		std::uint32_t key = 0;
+		if (!GetAssignHintKey(a_controllerMode, key))
+		{
+			if (shownKey.IsNumber())
+			{
+				this->uiMovie->Invoke("_root.MenuHolder.Menu_mc.hideEHKSHint", nullptr, nullptr, 0);
+			}
+			return;
+		}
+
+		if (shownKey.IsNumber() && static_cast<std::uint32_t>(shownKey.GetNumber()) == key)
+		{
+			return;
+		}
+
+		RE::GFxValue args[2];
+		args[0].SetNumber(static_cast<double>(key));
+		args[1].SetString(ModConfigUI::Localization::Get("$EHKS_Hint_AssignHotkey"));
+		this->uiMovie->Invoke("_root.MenuHolder.Menu_mc.showEHKSHint", nullptr, args, 2);
 	}
 
 	void FavoritesMenuEx::InstallHook()

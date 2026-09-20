@@ -1,10 +1,16 @@
 #pragma once
 
-#include <string>
-#include <vector>
-
 namespace EHKS
 {
+	// General
+	constexpr std::uint32_t ASSIGNMENT_KEY_DEFAULT_VALUE = 29;  // Left control
+	constexpr bool ALLOW_DUPLICATES_DEFAULT_VALUE = false;
+
+	// Whitelist
+	constexpr bool USE_WHITELIST_DEFAULT_VALUE = true;
+	constexpr const char* WHITELIST_DEFAULT_VALUE = "2,3,4,5,6,7,8,9,10,11";  // The number row, 1 to 0
+	constexpr bool ENFORCE_WHITELIST_DEFAULT_VALUE = false;
+
 	class Settings
 	{
 	public:
@@ -16,22 +22,29 @@ namespace EHKS
 
 		//bool					dualWieldSupport;
 
-		Button modifierKey;
+		Button assignmentKey;
+		bool allowDuplicates;
 
-		bool useWhiteList;
-		std::vector<Button> whitelist;
-		bool allowOverride;
+		bool useWhitelist;
+		bool enforceWhitelist;
 
-		bool IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id);
+		bool IsInWhitelist(RE::INPUT_DEVICE a_device, std::uint32_t a_id) const;
+
+		std::vector<Button> GetWhitelist() const;
+		void SetWhitelist(std::vector<Button> a_whitelist);
 
 		static Settings* GetSingleton();
 
 	private:
-		Settings(){};
-		~Settings(){};
+		Settings() {};
+		~Settings() {};
 		Settings(const Settings&) = delete;
 		Settings& operator=(const Settings&) = delete;
+
+		std::vector<Button> whitelist;
 	};
 
-	extern void LoadSettings();
+	void LoadSettings();
+	void SaveSettings();
+	void RestoreDefaults();
 }

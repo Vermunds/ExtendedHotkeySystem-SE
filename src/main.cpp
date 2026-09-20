@@ -1,10 +1,19 @@
+#include "ModConfigUI.h"
 #include "Serialization.h"
 #include "Settings.h"
-#include "version.h"
 
 #include "Hooks_FavoritesHandler.h"
 #include "Hooks_FavoritesMenu.h"
-#include "TaskQueue.h"
+
+#include "Version.h"
+
+static void MessageHandler(SKSE::MessagingInterface::Message* a_message)
+{
+	if (a_message->type == SKSE::MessagingInterface::kPostLoad)
+	{
+		EHKS::InstallModConfigUI();
+	}
+}
 
 extern "C"
 {
@@ -51,9 +60,15 @@ extern "C"
 
 		EHKS::LoadSettings();
 
+		const SKSE::MessagingInterface* messaging = SKSE::GetMessagingInterface();
+		if (!messaging->RegisterListener("SKSE", MessageHandler))
+		{
+			SKSE::log::critical("Messaging interface registration failed.");
+			return false;
+		}
+
 		EHKS::FavoritesHandlerEx::InstallHook();
 		EHKS::FavoritesMenuEx::InstallHook();
-		EHKS::TaskQueue::InstallHook();
 
 		SKSE::log::info("Hooks installed.");
 

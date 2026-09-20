@@ -12,6 +12,7 @@ namespace EHKS
 		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 05
 
 		void UpdateHotkeyIcons(bool a_controllerMode);
+		void UpdateAssignHint(bool a_controllerMode);
 		static void InstallHook();
 
 		using AdvanceMovie_t = decltype(&RE::FavoritesMenu::AdvanceMovie);

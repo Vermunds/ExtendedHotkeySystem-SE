@@ -5,18 +5,18 @@ set(SOURCES
 	include/Hotkey/ItemHotkey.h
 	include/Hotkey/MagicHotkey.h
 	include/HotkeyManager.h
+	include/ModConfigUI.h
 	include/PCH.h
 	include/Serialization.h
 	include/Settings.h
-	include/TaskQueue.h
 	include/Util.h
 	src/Hooks_FavoritesHandler.cpp
 	src/Hooks_FavoritesMenu.cpp
 	src/Hotkey/ItemHotkey.cpp
 	src/HotkeyManager.cpp
+	src/ModConfigUI.cpp
 	src/Serialization.cpp
 	src/Settings.cpp
-	src/TaskQueue.cpp
 	src/Util.cpp
 	src/main.cpp
 )

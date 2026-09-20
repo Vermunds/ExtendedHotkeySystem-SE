@@ -2,23 +2,10 @@
 
 #include "HotkeyManager.h"
 #include "Settings.h"
-#include "TaskQueue.h"
 #include "Util.h"
 
 namespace EHKS
 {
-	bool IsPlayerVampire()
-	{
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
-		if (objManager->IsInitialized())
-		{
-			RE::TESRace* vampireRace = static_cast<RE::TESRace*>(objManager->GetObject(RE::DEFAULT_OBJECT::kVampireRace));
-			return player->GetRace() == vampireRace;
-		}
-		return false;
-	}
-
 	bool IsEquipped(RE::TESForm* a_form)
 	{
 		// The function got inlined in AE, call the papyrus function instead
@@ -42,7 +29,7 @@ namespace EHKS
 		}
 
 		RE::MenuControls* mc = RE::MenuControls::GetSingleton();
-		if (mc->beastForm && !IsPlayerVampire())
+		if (mc->beastForm && !HotkeyManager::GetSingleton()->IsPlayerVampire())
 		{
 			return 0xFF;  //false
 		}
@@ -88,136 +75,196 @@ namespace EHKS
 		return 0xFF;  //false
 	}
 
-	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData)
+	RE::TESForm* GetHotkeyForm(Hotkey* a_hotkey)
 	{
-		auto task = [a_item, a_extraData]() {
-			RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
-			RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
-			RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+		if (a_hotkey->type == Hotkey::HotkeyType::kItem)
+		{
+			return static_cast<ItemHotkey*>(a_hotkey)->GetBaseForm();
+		}
+		return static_cast<MagicHotkey*>(a_hotkey)->form;
+	}
 
-			if (!a_item)
+	// The hotkey's equip mode, or kAuto for an item that doesn't fit either hand
+	Hotkey::EquipMode GetEquipMode(const Hotkey* a_hotkey, RE::TESForm* a_form)
+	{
+		return HotkeyManager::CanChooseHand(a_form) ? a_hotkey->equipMode : Hotkey::EquipMode::kAuto;
+	}
+
+	bool IsInHand(RE::TESForm* a_item, Hotkey::EquipMode a_equipMode)
+	{
+		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+		bool inLeftHand = a_item == player->currentProcess->GetEquippedLeftHand();
+		bool inRightHand = a_item == player->currentProcess->GetEquippedRightHand();
+
+		switch (a_equipMode)
+		{
+		case Hotkey::EquipMode::kLeft:
+			return inLeftHand;
+		case Hotkey::EquipMode::kRight:
+			return inRightHand;
+		default:
+			return inLeftHand || inRightHand;
+		}
+	}
+
+	// Items that can be taken off again: the first of these on the button decides whether the press equips or unequips
+	bool IsToggleable(RE::TESForm* a_item, Hotkey::EquipMode a_equipMode, bool& a_isEquipped)
+	{
+		switch (a_item->formType.get())
+		{
+		case RE::FormType::Armor:
+		case RE::FormType::Ammo:
+			a_isEquipped = IsEquipped(a_item);
+			return true;
+		case RE::FormType::Weapon:
+		case RE::FormType::Light:
+			a_isEquipped = IsInHand(a_item, a_equipMode);
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData, bool a_equip, Hotkey::EquipMode a_equipMode)
+	{
+		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
+		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
+		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+
+		if (!a_item)
+		{
+			return;
+		}
+
+		RE::BGSEquipSlot* rightHandSlot = nullptr;
+		RE::BGSEquipSlot* leftHandSlot = nullptr;
+
+		if (objManager->IsInitialized())
+		{
+			rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
+			leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
+		}
+
+		// The hand the equip mode picks, null for kAuto
+		RE::BGSEquipSlot* chosenHandSlot = nullptr;
+		if (a_equipMode == Hotkey::EquipMode::kLeft)
+		{
+			chosenHandSlot = leftHandSlot;
+		}
+		else if (a_equipMode == Hotkey::EquipMode::kRight)
+		{
+			chosenHandSlot = rightHandSlot;
+		}
+
+		switch (a_item->formType.get())
+		{
+		case RE::FormType::Armor:
 			{
-				return;
-			}
+				RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(a_item);
 
-			RE::BGSEquipSlot* rightHandSlot = nullptr;
-			RE::BGSEquipSlot* leftHandSlot = nullptr;
-
-			if (objManager->IsInitialized())
-			{
-				rightHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip));
-				leftHandSlot = static_cast<RE::BGSEquipSlot*>(objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip));
-			}
-
-			switch (a_item->formType.get())
-			{
-			case RE::FormType::Armor:
+				if (!a_equip)
 				{
-					RE::TESObjectARMO* item = static_cast<RE::TESObjectARMO*>(a_item);
-
-					if (IsEquipped(item))
-					{
-						em->UnequipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					}
-					else
-					{
-						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					}
-					break;
+					em->UnequipObject(player, item, a_extraData, 1, item->GetEquipSlot());
 				}
-			case RE::FormType::Weapon:
+				else if (!IsEquipped(item))
 				{
-					RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
-					if (item == player->currentProcess->GetEquippedLeftHand() || item == player->currentProcess->GetEquippedRightHand())
-					{
-						//Item already equipped
-						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-					}
-					else
-					{
-						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					}
-					break;
-				}
-			case RE::FormType::Light:
-				{
-					RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(a_item);
-					if (a_item == player->currentProcess->GetEquippedLeftHand() || a_item == player->currentProcess->GetEquippedRightHand())
-					{
-						//Item already equipped
-						em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
-					}
-					else
-					{
-						em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					}
-					break;
-				}
-			case RE::FormType::AlchemyItem:
-				{
-					RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(a_item);
 					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					break;
 				}
-			case RE::FormType::Ingredient:
+				break;
+			}
+		case RE::FormType::Weapon:
+			{
+				RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
+				RE::BGSEquipSlot* slot = chosenHandSlot ? chosenHandSlot : item->GetEquipSlot();
+				if (!a_equip)
 				{
-					RE::IngredientItem* item = static_cast<RE::IngredientItem*>(a_item);
+					em->UnequipObject(player, item, nullptr, 1, slot);
+				}
+				else if (!IsInHand(item, a_equipMode))
+				{
+					em->EquipObject(player, item, a_extraData, 1, slot);
+				}
+				break;
+			}
+		case RE::FormType::Light:
+			{
+				RE::TESObjectLIGH* item = static_cast<RE::TESObjectLIGH*>(a_item);
+				if (!a_equip)
+				{
+					em->UnequipObject(player, item, nullptr, 1, item->GetEquipSlot());
+				}
+				else if (!IsInHand(item, a_equipMode))
+				{
 					em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
-					break;
 				}
-			case RE::FormType::Spell:
+				break;
+			}
+		case RE::FormType::AlchemyItem:
+			{
+				RE::AlchemyItem* item = static_cast<RE::AlchemyItem*>(a_item);
+				em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+				break;
+			}
+		case RE::FormType::Ingredient:
+			{
+				RE::IngredientItem* item = static_cast<RE::IngredientItem*>(a_item);
+				em->EquipObject(player, item, a_extraData, 1, item->GetEquipSlot());
+				break;
+			}
+		case RE::FormType::Spell:
+			{
+				RE::SpellItem* item = static_cast<RE::SpellItem*>(a_item);
+				if (item->IsTwoHanded())
 				{
-					RE::SpellItem* item = static_cast<RE::SpellItem*>(a_item);
-					if (item->IsTwoHanded())
+					em->EquipSpell(player, item, item->GetEquipSlot());
+				}
+				else if (chosenHandSlot)
+				{
+					em->EquipSpell(player, item, chosenHandSlot);
+				}
+				else
+				{
+					if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
 					{
-						em->EquipSpell(player, item, item->GetEquipSlot());
+						//Equip spell to left hand
+						em->EquipSpell(player, item, leftHandSlot);
 					}
-					else
+					else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
 					{
-						if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kLeftHand] != item)
-						{
-							//Equip spell to left hand
-							em->EquipSpell(player, item, leftHandSlot);
-						}
-						else if (player->selectedSpells[RE::PlayerCharacter::SlotTypes::kRightHand] != item)
-						{
-							//Equip spell to right hand
-							em->EquipSpell(player, item, rightHandSlot);
-						}
+						//Equip spell to right hand
+						em->EquipSpell(player, item, rightHandSlot);
 					}
+				}
 
-					return;  //Nothing to equip
-				}
-			case RE::FormType::Shout:
+				return;  //Nothing to equip
+			}
+		case RE::FormType::Shout:
+			{
+				RE::TESShout* item = static_cast<RE::TESShout*>(a_item);
+				em->EquipShout(player, item);
+				break;
+			}
+		case RE::FormType::Ammo:
+			{
+				RE::TESAmmo* item = static_cast<RE::TESAmmo*>(a_item);
+				if (!a_equip)
 				{
-					RE::TESShout* item = static_cast<RE::TESShout*>(a_item);
-					em->EquipShout(player, item);
-					break;
+					em->UnequipObject(player, item, nullptr, 1, nullptr);
 				}
-			case RE::FormType::Ammo:
+				else if (!IsEquipped(item))
 				{
-					RE::TESAmmo* item = static_cast<RE::TESAmmo*>(a_item);
-					if (IsEquipped(item))
-					{
-						em->UnequipObject(player, item, nullptr, 1, nullptr);
-					}
-					else
-					{
-						em->EquipObject(player, item, a_extraData, 1, nullptr);
-					}
-					break;
-				}
-			case RE::FormType::Scroll:
-				{
-					RE::ScrollItem* item = static_cast<RE::ScrollItem*>(a_item);
 					em->EquipObject(player, item, a_extraData, 1, nullptr);
-					break;
 				}
+				break;
 			}
-			RE::PlaySound("UIFavorite");
-		};
-
-		TaskQueue::GetSingleton()->AddTask(task);
+		case RE::FormType::Scroll:
+			{
+				RE::ScrollItem* item = static_cast<RE::ScrollItem*>(a_item);
+				em->EquipObject(player, item, a_extraData, 1, nullptr);
+				break;
+			}
+		}
+		RE::PlaySound("UIFavorite");
 	}
 
 	bool FavoritesHandlerEx::ProcessButton_Hook(RE::ButtonEvent* a_event)
@@ -233,7 +280,7 @@ namespace EHKS
 			return false;
 		}
 
-		if (a_event->userEvent == userEvents->favorites)
+		if (a_event->userEvent == userEvents->favorites && a_event->IsDown())
 		{
 			if (!ui->IsMenuOpen(RE::FavoritesMenu::MENU_NAME))
 			{
@@ -246,42 +293,40 @@ namespace EHKS
 		if (a_event->eventType == RE::INPUT_EVENT_TYPE::kButton)
 		{
 			HotkeyManager* hotkeyManager = HotkeyManager::GetSingleton();
-			Hotkey* hotkey = nullptr;
 
 			if (a_event->device == RE::INPUT_DEVICE::kGamepad && !EHKS::IsVanillaHotkey(a_event->userEvent))
 			{
 				return false;
 			}
 
-			bool isVampire = IsPlayerVampire();
-			isVampire ? hotkey = hotkeyManager->GetVampireHotkey(a_event->device.get(), a_event->idCode) : hotkey = hotkeyManager->GetHotkey(a_event->device.get(), a_event->idCode);
+			std::vector<Hotkey*> hotkeys = hotkeyManager->GetActiveHotkeys(a_event->device.get(), a_event->idCode);
 
-			if (hotkey)
+			//Every item on the button goes the same way, decided by the first one that can be taken off
+			bool equip = true;
+			for (std::vector<Hotkey*>::iterator it = hotkeys.begin(); it != hotkeys.end(); ++it)
 			{
-				//Update hotkeys and check again
-				hotkeyManager->UpdateHotkeys();
-
-				if (isVampire ? hotkey = hotkeyManager->GetVampireHotkey(a_event->device.get(), a_event->idCode) : hotkey = hotkeyManager->GetHotkey(a_event->device.get(), a_event->idCode))
+				RE::TESForm* form = GetHotkeyForm(*it);
+				bool isEquipped = false;
+				if (form && IsToggleable(form, GetEquipMode(*it, form), isEquipped))
 				{
-					if (hotkey->type == Hotkey::HotkeyType::kItem)
-					{
-						ItemHotkey* itemHotkey = static_cast<ItemHotkey*>(hotkey);
-						RE::TESForm* baseForm = itemHotkey->GetBaseForm();
-						if (baseForm)
-						{
-							RE::ExtraDataList* extraData = itemHotkey->GetExtraData();
-							EquipItem(baseForm, extraData);
-							return true;
-						}
-					}
-					else
-					{
-						MagicHotkey* magicHotkey = static_cast<MagicHotkey*>(hotkey);
-						EquipItem(magicHotkey->form, nullptr);
-						return true;
-					}
+					equip = !isEquipped;
+					break;
 				}
 			}
+
+			bool handled = false;
+			for (std::vector<Hotkey*>::iterator it = hotkeys.begin(); it != hotkeys.end(); ++it)
+			{
+				Hotkey* hotkey = *it;
+				RE::TESForm* form = GetHotkeyForm(hotkey);
+				if (form)
+				{
+					RE::ExtraDataList* extraData = hotkey->type == Hotkey::HotkeyType::kItem ? static_cast<ItemHotkey*>(hotkey)->GetExtraData() : nullptr;
+					EquipItem(form, extraData, equip, GetEquipMode(hotkey, form));
+					handled = true;
+				}
+			}
+			return handled;
 		}
 		return false;
 	}

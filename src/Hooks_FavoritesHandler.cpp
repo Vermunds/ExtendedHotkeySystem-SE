@@ -125,6 +125,28 @@ namespace EHKS
 		}
 	}
 
+	void UpdateShield(RE::PlayerCharacter* a_player, RE::TESForm* a_item)
+	{
+		if (!a_player->currentProcess)
+		{
+			return;
+		}
+
+		a_player->currentProcess->Update3DModel(a_player);
+
+		if (a_item->formType.get() == RE::FormType::Armor)
+		{
+			REL::Relocation<RE::BIPED_OBJECT (*)(RE::Actor*)> GetShieldObjectSlot(REL::ID{ 19630 });
+			REL::Relocation<bool (*)(RE::BGSBipedObjectForm*, RE::BIPED_OBJECT)> HasPartOf(REL::ID{ 14119 });
+			REL::Relocation<void (*)(RE::Actor*)> DoUpdateShield(REL::ID{ 40418 });
+
+			if (HasPartOf(static_cast<RE::TESObjectARMO*>(a_item), GetShieldObjectSlot(a_player)))
+			{
+				DoUpdateShield(a_player);
+			}
+		}
+	}
+
 	void EquipItem(RE::TESForm* a_item, RE::ExtraDataList* a_extraData, bool a_equip, Hotkey::EquipMode a_equipMode)
 	{
 		RE::ActorEquipManager* em = RE::ActorEquipManager::GetSingleton();
@@ -264,6 +286,9 @@ namespace EHKS
 				break;
 			}
 		}
+
+		UpdateShield(player, a_item);
+
 		RE::PlaySound("UIFavorite");
 	}
 

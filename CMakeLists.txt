@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.31)
 # Setup project
 project(
 	ExtendedHotkeySystem
-	VERSION 2.1.0
+	VERSION 3.0.0
 	LANGUAGES CXX
 )
 set(FORMATTED_NAME "Extended Hotkey System")

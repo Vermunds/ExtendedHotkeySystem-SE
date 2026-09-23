@@ -618,6 +618,11 @@ namespace EHKS
 			SaveSettings();
 		}
 
+		if (a_renderer.Checkbox(Translate("$EHKS_Setting_DualWieldSupport"), &settings->dualWieldSupport, DUAL_WIELD_SUPPORT_DEFAULT_VALUE, Translate("$EHKS_Setting_DualWieldSupport_Tooltip")))
+		{
+			SaveSettings();
+		}
+
 		a_renderer.Spacing();
 
 		DrawWhitelistSection(a_renderer);

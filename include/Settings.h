@@ -5,6 +5,7 @@ namespace EHKS
 	// General
 	constexpr std::uint32_t ASSIGNMENT_KEY_DEFAULT_VALUE = 29;  // Left control
 	constexpr bool ALLOW_DUPLICATES_DEFAULT_VALUE = false;
+	constexpr bool DUAL_WIELD_SUPPORT_DEFAULT_VALUE = true;
 
 	// Whitelist
 	constexpr bool USE_WHITELIST_DEFAULT_VALUE = true;
@@ -20,10 +21,9 @@ namespace EHKS
 			std::uint32_t id;
 		};
 
-		//bool					dualWieldSupport;
-
 		Button assignmentKey;
 		bool allowDuplicates;
+		bool dualWieldSupport;
 
 		bool useWhitelist;
 		bool enforceWhitelist;

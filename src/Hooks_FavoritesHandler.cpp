@@ -107,6 +107,86 @@ namespace EHKS
 		}
 	}
 
+	void GetWornCopies(RE::TESBoundObject* a_item, std::int32_t& a_count, RE::ExtraDataList*& a_wornLeft, RE::ExtraDataList*& a_wornRight)
+	{
+		a_count = 0;
+		a_wornLeft = nullptr;
+		a_wornRight = nullptr;
+
+		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
+		RE::TESObjectREFR::InventoryItemMap inventory = player->GetInventory([a_item](RE::TESBoundObject& a_object) { return &a_object == a_item; });
+
+		RE::TESObjectREFR::InventoryItemMap::iterator it = inventory.find(a_item);
+		if (it == inventory.end())
+		{
+			return;
+		}
+
+		a_count = it->second.first;
+
+		RE::InventoryEntryData* entryData = it->second.second.get();
+		if (!entryData || !entryData->extraLists)
+		{
+			return;
+		}
+
+		for (RE::BSSimpleList<RE::ExtraDataList*>::iterator it2 = entryData->extraLists->begin(); it2 != entryData->extraLists->end(); ++it2)
+		{
+			RE::ExtraDataList* extraDataEntry = *it2;
+			if (!extraDataEntry)
+			{
+				continue;
+			}
+
+			if (extraDataEntry->HasType(RE::ExtraDataType::kWornLeft))
+			{
+				a_wornLeft = extraDataEntry;
+			}
+			if (extraDataEntry->HasType(RE::ExtraDataType::kWorn))
+			{
+				a_wornRight = extraDataEntry;
+			}
+		}
+	}
+
+	bool CanDualWield(RE::TESForm* a_item, Hotkey::EquipMode a_equipMode, bool& a_toLeftHand)
+	{
+		if (a_equipMode != Hotkey::EquipMode::kAuto || !Settings::GetSingleton()->dualWieldSupport)
+		{
+			return false;
+		}
+
+		RE::TESObjectWEAP* weapon = a_item->As<RE::TESObjectWEAP>();
+		RE::BGSDefaultObjectManager* objManager = RE::BGSDefaultObjectManager::GetSingleton();
+		if (!weapon || !objManager->IsInitialized())
+		{
+			return false;
+		}
+
+		RE::TESRace* race = RE::PlayerCharacter::GetSingleton()->GetRace();
+		RE::BGSEquipSlot* slot = weapon->GetEquipSlot();
+		bool fitsEitherHand = slot == objManager->GetObject(RE::DEFAULT_OBJECTS::kEitherHandEquip);
+		bool namesHand = slot == objManager->GetObject(RE::DEFAULT_OBJECTS::kLeftHandEquip) || slot == objManager->GetObject(RE::DEFAULT_OBJECTS::kRightHandEquip);
+		bool raceCanDualWield = race && race->data.flags.all(RE::RACE_DATA::Flag::kCanDualWield);
+		if (!fitsEitherHand && !(namesHand && raceCanDualWield))
+		{
+			return false;
+		}
+
+		std::int32_t count = 0;
+		RE::ExtraDataList* wornLeft = nullptr;
+		RE::ExtraDataList* wornRight = nullptr;
+		GetWornCopies(weapon, count, wornLeft, wornRight);
+
+		if (count < 2 || (wornLeft != nullptr) == (wornRight != nullptr))
+		{
+			return false;
+		}
+
+		a_toLeftHand = wornRight != nullptr;
+		return true;
+	}
+
 	// Items that can be taken off again: the first of these on the button decides whether the press equips or unequips
 	bool IsToggleable(RE::TESForm* a_item, Hotkey::EquipMode a_equipMode, bool& a_isEquipped)
 	{
@@ -118,8 +198,11 @@ namespace EHKS
 			return true;
 		case RE::FormType::Weapon:
 		case RE::FormType::Light:
-			a_isEquipped = IsInHand(a_item, a_equipMode);
-			return true;
+			{
+				bool toLeftHand = false;
+				a_isEquipped = IsInHand(a_item, a_equipMode) && !CanDualWield(a_item, a_equipMode, toLeftHand);
+				return true;
+			}
 		default:
 			return false;
 		}
@@ -198,9 +281,30 @@ namespace EHKS
 			{
 				RE::TESObjectWEAP* item = static_cast<RE::TESObjectWEAP*>(a_item);
 				RE::BGSEquipSlot* slot = chosenHandSlot ? chosenHandSlot : item->GetEquipSlot();
+				bool toLeftHand = false;
 				if (!a_equip)
 				{
-					em->UnequipObject(player, item, nullptr, 1, slot);
+					std::int32_t count = 0;
+					RE::ExtraDataList* wornLeft = nullptr;
+					RE::ExtraDataList* wornRight = nullptr;
+					if (!chosenHandSlot && Settings::GetSingleton()->dualWieldSupport)
+					{
+						GetWornCopies(item, count, wornLeft, wornRight);
+					}
+
+					if (wornLeft && wornRight)
+					{
+						em->UnequipObject(player, item, wornLeft, 1, leftHandSlot);
+						em->UnequipObject(player, item, wornRight, 1, rightHandSlot);
+					}
+					else
+					{
+						em->UnequipObject(player, item, nullptr, 1, slot);
+					}
+				}
+				else if (CanDualWield(item, a_equipMode, toLeftHand))
+				{
+					em->EquipObject(player, item, nullptr, 1, toLeftHand ? leftHandSlot : rightHandSlot);
 				}
 				else if (!IsInHand(item, a_equipMode))
 				{

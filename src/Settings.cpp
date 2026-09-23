@@ -131,20 +131,20 @@ namespace EHKS
 		SKSE::log::info("Loading settings from: {}", std::filesystem::absolute(INI_PATH).string());
 
 		IniSection(ini, "GENERAL");
-		//settings->dualWieldSupport = IniGetBool(ini, "GENERAL", "bDualWieldSupport", false, "# Allows you to equip the same weapon to the left hand if it's already equipped to the right (instead of unequipping it)\n# Only works with the same weapons and enchantments.As a rule of thumb : if it stacks in the inventory, it will work, otherwise no.\n# Default value is false (disabled)");
-
-		std::uint32_t assignmentKey = IniGetUInt(ini, "GENERAL", "iAssignmentKey", ASSIGNMENT_KEY_DEFAULT_VALUE, "# The assignment key you have to press when assigning hotkeys in the favorites menu.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Example: iAssignmentKey = 45 is the the 'X' button.\n# Default value is 29, which is the left control key.");
+		std::uint32_t assignmentKey = IniGetUInt(ini, "GENERAL", "iAssignmentKey", ASSIGNMENT_KEY_DEFAULT_VALUE, "# Hold this key while clicking an item in the Favorites menu to assign it a hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Example: iAssignmentKey = 45 is the the 'X' button.\n# Default value is 29, which is the left control key.");
 		settings->assignmentKey = GetButtonObj(assignmentKey);
 
-		settings->allowDuplicates = IniGetBool(ini, "GENERAL", "bAllowDuplicates", ALLOW_DUPLICATES_DEFAULT_VALUE, "# If enabled, assigning a button that is already in use keeps the old hotkey as well.\n# Pressing the button then equips or unequips all of its items together.\n# Default is false (disabled, the old hotkey is replaced)");
+		settings->allowDuplicates = IniGetBool(ini, "GENERAL", "bAllowDuplicates", ALLOW_DUPLICATES_DEFAULT_VALUE, "# When enabled, assigning a button that is already in use keeps its old hotkey too, instead of replacing it.\n# Pressing the button then equips or unequips all of them together.\n# Default is false (disabled)");
+
+		settings->dualWieldSupport = IniGetBool(ini, "GENERAL", "bDualWieldSupport", DUAL_WIELD_SUPPORT_DEFAULT_VALUE, "# When enabled, if the weapon is already in one hand and you carry another, the hotkey equips that to the other hand instead of unequipping it.\n# This only works for items that are stacked in the inventory.\n# Default is true (enabled)");
 
 		IniSection(ini, "WHITELIST");
-		settings->useWhitelist = IniGetBool(ini, "WHITELIST", "bUseWhitelist", USE_WHITELIST_DEFAULT_VALUE, "# Enable or disable the button whitelist. If enabled, only whitelisted buttons can be set as a hotkey.\n# You don't have to hold down the assignment key to assign these hotkeys.\n# Default is true (enabled)");
+		settings->useWhitelist = IniGetBool(ini, "WHITELIST", "bUseWhitelist", USE_WHITELIST_DEFAULT_VALUE, "# Whitelisted buttons assign a hotkey on their own, without holding the assignment key.\n# Everything else still needs the assignment key.\n# Default is true (enabled)");
 
 		std::string whitelistStr = IniGetString(ini, "WHITELIST", "sWhitelist", WHITELIST_DEFAULT_VALUE, "# The list of buttons that can be set as hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Separate the entries with commas(, ) do not use spaces or any other characters!\n# Example: sWhitelist = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 (these are the numeric buttons from 0 to 9)");
 		settings->SetWhitelist(ParseWhitelist(whitelistStr));
 
-		settings->enforceWhitelist = IniGetBool(ini, "WHITELIST", "bEnforceWhitelist", ENFORCE_WHITELIST_DEFAULT_VALUE, "# If enabled, the assignment key + hotkey combination can no longer assign a hotkey outside of the whitelist.\n# Default is false (disabled)");
+		settings->enforceWhitelist = IniGetBool(ini, "WHITELIST", "bEnforceWhitelist", ENFORCE_WHITELIST_DEFAULT_VALUE, "# When enabled, only whitelisted buttons can be assigned.\n# The assignment key is disabled, and its hint is hidden in the Favorites menu.\n# Default is false (disabled)");
 
 		SKSE::log::info("Settings loaded.");
 
@@ -169,6 +169,7 @@ namespace EHKS
 
 		ini.SetLongValue("GENERAL", "iAssignmentKey", static_cast<long>(GetButtonKey(settings->assignmentKey)), nullptr, false, true);
 		ini.SetBoolValue("GENERAL", "bAllowDuplicates", settings->allowDuplicates, nullptr, true);
+		ini.SetBoolValue("GENERAL", "bDualWieldSupport", settings->dualWieldSupport, nullptr, true);
 		ini.SetBoolValue("WHITELIST", "bUseWhitelist", settings->useWhitelist, nullptr, true);
 		ini.SetBoolValue("WHITELIST", "bEnforceWhitelist", settings->enforceWhitelist, nullptr, true);
 
@@ -201,6 +202,7 @@ namespace EHKS
 
 		settings->assignmentKey = GetButtonObj(ASSIGNMENT_KEY_DEFAULT_VALUE);
 		settings->allowDuplicates = ALLOW_DUPLICATES_DEFAULT_VALUE;
+		settings->dualWieldSupport = DUAL_WIELD_SUPPORT_DEFAULT_VALUE;
 		settings->useWhitelist = USE_WHITELIST_DEFAULT_VALUE;
 		settings->enforceWhitelist = ENFORCE_WHITELIST_DEFAULT_VALUE;
 		settings->SetWhitelist(ParseWhitelist(WHITELIST_DEFAULT_VALUE));

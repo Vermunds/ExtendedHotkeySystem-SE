@@ -131,7 +131,7 @@ namespace EHKS
 		SKSE::log::info("Loading settings from: {}", std::filesystem::absolute(INI_PATH).string());
 
 		IniSection(ini, "GENERAL");
-		std::uint32_t assignmentKey = IniGetUInt(ini, "GENERAL", "iAssignmentKey", ASSIGNMENT_KEY_DEFAULT_VALUE, "# Hold this key while clicking an item in the Favorites menu to assign it a hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Example: iAssignmentKey = 45 is the the 'X' button.\n# Default value is 29, which is the left control key.");
+		std::uint32_t assignmentKey = IniGetUInt(ini, "GENERAL", "iAssignmentKey", ASSIGNMENT_KEY_DEFAULT_VALUE, "# Hold this key while clicking an item in the Favorites menu to assign it a hotkey.\n# The value is a button code: keyboard keys use their DirectInput scan code, mouse buttons start at 256 and controller buttons at 266. The easiest way to change it is the in-game settings menu.\n# Example: iAssignmentKey = 45 is the 'X' key.\n# Default value is 29, which is the left control key.");
 		settings->assignmentKey = GetButtonObj(assignmentKey);
 
 		settings->allowDuplicates = IniGetBool(ini, "GENERAL", "bAllowDuplicates", ALLOW_DUPLICATES_DEFAULT_VALUE, "# When enabled, assigning a button that is already in use keeps its old hotkey too, instead of replacing it.\n# Pressing the button then equips or unequips all of them together.\n# Default is false (disabled)");
@@ -141,7 +141,7 @@ namespace EHKS
 		IniSection(ini, "WHITELIST");
 		settings->useWhitelist = IniGetBool(ini, "WHITELIST", "bUseWhitelist", USE_WHITELIST_DEFAULT_VALUE, "# Whitelisted buttons assign a hotkey on their own, without holding the assignment key.\n# Everything else still needs the assignment key.\n# Default is true (enabled)");
 
-		std::string whitelistStr = IniGetString(ini, "WHITELIST", "sWhitelist", WHITELIST_DEFAULT_VALUE, "# The list of buttons that can be set as hotkey.\n# Requires a DirectInput scan code of the key you want to use.See the included scancodes.txt file for a list of buttons.\n# Separate the entries with commas(, ) do not use spaces or any other characters!\n# Example: sWhitelist = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 (these are the numeric buttons from 0 to 9)");
+		std::string whitelistStr = IniGetString(ini, "WHITELIST", "sWhitelist", WHITELIST_DEFAULT_VALUE, "# The list of whitelisted buttons, as button codes (see iAssignmentKey). Separate the entries with commas, without spaces.\n# Example: sWhitelist = 2,3,4,5,6,7,8,9,10,11 (the number row, from 1 to 0)");
 		settings->SetWhitelist(ParseWhitelist(whitelistStr));
 
 		settings->enforceWhitelist = IniGetBool(ini, "WHITELIST", "bEnforceWhitelist", ENFORCE_WHITELIST_DEFAULT_VALUE, "# When enabled, only whitelisted buttons can be assigned.\n# The assignment key is disabled, and its hint is hidden in the Favorites menu.\n# Default is false (disabled)");

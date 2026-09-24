@@ -304,7 +304,9 @@ namespace EHKS
 		_ProcessMessage = vTable.write_vfunc(0x4, &FavoritesMenuEx::ProcessMessage_Hook);
 		_AdvanceMovie = vTable.write_vfunc(0x5, &FavoritesMenuEx::AdvanceMovie_Hook);
 
-		_CanProcess = vTable.write_vfunc(0xB, &FavoritesMenuEx::CanProcess_Hook);
-		_ProcessButton = vTable.write_vfunc(0xF, &FavoritesMenuEx::ProcessButton_Hook);
+		REL::Relocation<std::uintptr_t> vTableMenuEventHandler(RE::VTABLE_FavoritesMenu[1]);
+
+		_CanProcess = vTableMenuEventHandler.write_vfunc(0x1, &FavoritesMenuEx::CanProcess_Hook);
+		_ProcessButton = vTableMenuEventHandler.write_vfunc(0x7, &FavoritesMenuEx::ProcessButton_Hook);
 	}
 }

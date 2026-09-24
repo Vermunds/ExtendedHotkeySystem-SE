@@ -463,11 +463,11 @@ namespace EHKS
 	void FavoritesHandlerEx::InstallHook()
 	{
 		REL::ID favoritesHandler_IsHotkey_Hook{ 52258 };
-		SKSE::GetTrampoline().write_call<6>(favoritesHandler_IsHotkey_Hook.address() + 0x2F, (uintptr_t)IsHotkey_Hook);
+		REL::GetTrampoline().write_call<6>(favoritesHandler_IsHotkey_Hook.address() + 0x2F, (uintptr_t)IsHotkey_Hook);
 		std::uint8_t codes[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
-		REL::safe_write(favoritesHandler_IsHotkey_Hook.address() + 0x2F + 0x6, codes, sizeof(codes));
+		REL::WriteSafe(favoritesHandler_IsHotkey_Hook.address() + 0x2F + 0x6, codes, sizeof(codes));
 
 		REL::Relocation<std::uintptr_t> vTable(RE::VTABLE_FavoritesHandler[0]);
-		_ProcessButton = vTable.write_vfunc(0x5, &FavoritesHandlerEx::ProcessButton_Hook);
+		_ProcessButton = vTable.write_vfunc(0x7, &FavoritesHandlerEx::ProcessButton_Hook);
 	}
 }

@@ -9,7 +9,7 @@ namespace EHKS
 		void AdvanceMovie_Hook(float a_interval, std::uint32_t a_currentTime);  // 05
 
 		bool CanProcess_Hook(RE::InputEvent* a_event);      // 01
-		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 05
+		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 07
 
 		void UpdateHotkeyIcons(bool a_controllerMode);
 		void UpdateAssignHint(bool a_controllerMode);

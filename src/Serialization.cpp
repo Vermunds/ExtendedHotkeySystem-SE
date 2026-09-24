@@ -6,7 +6,7 @@ namespace EHKS
 	{
 		//Block length
 		a_serializedData.push_back(static_cast<std::uint32_t>(a_hotkeyList.size()));
-		SKSE::log::info("Serializing {} hotkeys...", a_hotkeyList.size());
+		logger::info("Serializing {} hotkeys...", a_hotkeyList.size());
 
 		for (auto it = a_hotkeyList.begin(); it != a_hotkeyList.end(); ++it)
 		{
@@ -36,31 +36,31 @@ namespace EHKS
 				a_serializedData.push_back(magicHotkey->form->formID);
 			}
 		}
-		SKSE::log::info("Successfully serialized {} hotkeys.", a_hotkeyList.size());
+		logger::info("Successfully serialized {} hotkeys.", a_hotkeyList.size());
 	}
 
 	bool DeserializeHotkeys(const std::vector<std::uint32_t>& a_serializedData, std::uint32_t& a_currentIndex, std::list<Hotkey*>& a_hotkeyList)
 	{
 		if (a_currentIndex >= a_serializedData.size())
 		{
-			SKSE::log::error("Serialized data ended unexpectedly.");
+			logger::error("Serialized data ended unexpectedly.");
 			return false;
 		}
 
 		std::uint32_t blockSize = a_serializedData[a_currentIndex++];
-		SKSE::log::info("Expecting {} hotkeys.", blockSize);
+		logger::info("Expecting {} hotkeys.", blockSize);
 
 		//Every entry is 5 elements long
 		if (a_serializedData.size() - a_currentIndex < static_cast<std::size_t>(blockSize) * 5)
 		{
-			SKSE::log::error("Serialized data is too short for {} hotkeys.", blockSize);
+			logger::error("Serialized data is too short for {} hotkeys.", blockSize);
 			return false;
 		}
 
 		//Iterate through the hotkey entries
 		for (std::uint32_t i = 0; i < blockSize; ++i)
 		{
-			SKSE::log::info("Reading hotkey {} data...", i + 1);
+			logger::info("Reading hotkey {} data...", i + 1);
 
 			//Read hotkey type
 			Hotkey::HotkeyType hotkeyType = static_cast<Hotkey::HotkeyType>(a_serializedData[a_currentIndex++]);
@@ -79,19 +79,19 @@ namespace EHKS
 
 			if (deviceType != RE::INPUT_DEVICE::kKeyboard && deviceType != RE::INPUT_DEVICE::kMouse && deviceType != RE::INPUT_DEVICE::kGamepad)
 			{
-				SKSE::log::error("Unknown device type: {}. Ignoring hotkey.", static_cast<std::int32_t>(deviceType));
+				logger::error("Unknown device type: {}. Ignoring hotkey.", static_cast<std::int32_t>(deviceType));
 				continue;
 			}
 
 			if (keyMask > 255)
 			{
-				SKSE::log::error("Unknown keymask: {}. Ignoring hotkey.", keyMask);
+				logger::error("Unknown keymask: {}. Ignoring hotkey.", keyMask);
 				continue;
 			}
 
 			if (equipModeData > static_cast<std::uint32_t>(Hotkey::EquipMode::kRight))
 			{
-				SKSE::log::error("Unknown equip mode: {}. Ignoring hotkey.", equipModeData);
+				logger::error("Unknown equip mode: {}. Ignoring hotkey.", equipModeData);
 				continue;
 			}
 
@@ -104,21 +104,21 @@ namespace EHKS
 				RE::FormID resolvedFormID;
 				if (!SKSE::GetSerializationInterface()->ResolveFormID(formID, resolvedFormID))
 				{
-					SKSE::log::error("Unable to resolve formID {:08X}. Ignoring hotkey.", formID);
+					logger::error("Unable to resolve formID {:08X}. Ignoring hotkey.", formID);
 					continue;
 				}
-				SKSE::log::info("Resolved formID {:08X} to {:08X}", formID, resolvedFormID);
+				logger::info("Resolved formID {:08X} to {:08X}", formID, resolvedFormID);
 
 				RE::TESForm* form = RE::TESForm::LookupByID(resolvedFormID);
 				if (!form)
 				{
-					SKSE::log::error("Unable to lookup form {:08X}. Ignoring hotkey.", resolvedFormID);
+					logger::error("Unable to lookup form {:08X}. Ignoring hotkey.", resolvedFormID);
 					continue;
 				}
 
 				if (form->formType != RE::FormType::Spell && form->formType != RE::FormType::Shout)
 				{
-					SKSE::log::error("Form {:08X} is not a spell or a shout ({}). Ignoring hotkey.", resolvedFormID, form->formType.underlying());
+					logger::error("Form {:08X} is not a spell or a shout ({}). Ignoring hotkey.", resolvedFormID, form->formType.underlying());
 					continue;
 				}
 
@@ -137,7 +137,7 @@ namespace EHKS
 
 				if (extraDataId >= 0xFF)
 				{
-					SKSE::log::error("Invalid extra data id: {}. Ignoring hotkey.", extraDataId);
+					logger::error("Invalid extra data id: {}. Ignoring hotkey.", extraDataId);
 					continue;
 				}
 
@@ -152,13 +152,13 @@ namespace EHKS
 			}
 			else
 			{
-				SKSE::log::info("Unknown hotkey type. Ignoring hotkey.");
+				logger::info("Unknown hotkey type. Ignoring hotkey.");
 				continue;
 			}
-			SKSE::log::info("Hotkey {} successfully loaded.", i + 1);
+			logger::info("Hotkey {} successfully loaded.", i + 1);
 		}
 
-		SKSE::log::info("Successfully loaded {} hotkeys.", a_hotkeyList.size());
+		logger::info("Successfully loaded {} hotkeys.", a_hotkeyList.size());
 
 		return true;
 	}
@@ -173,7 +173,7 @@ namespace EHKS
 
 		if (!a_intfc->OpenRecord('EHS~', SERIALIZATION_VERSION))
 		{
-			SKSE::log::error("Failed to open record for serialized data!");
+			logger::error("Failed to open record for serialized data!");
 			return;
 		}
 
@@ -181,12 +181,12 @@ namespace EHKS
 		{
 			if (!a_intfc->WriteRecordData(&elem, sizeof(elem)))
 			{
-				SKSE::log::error("Failed to write data for serialized data element!");
+				logger::error("Failed to write data for serialized data element!");
 				return;
 			}
 		}
 
-		SKSE::log::info("Hotkeys saved successfully.");
+		logger::info("Hotkeys saved successfully.");
 	}
 
 	void LoadCallback(SKSE::SerializationInterface* a_intfc)
@@ -205,14 +205,14 @@ namespace EHKS
 		{
 			if (type != 'EHS~')
 			{
-				SKSE::log::error("Unrecognized signature type!");
+				logger::error("Unrecognized signature type!");
 				success = false;
 				break;
 			}
 
 			if (version != SERIALIZATION_VERSION)
 			{
-				SKSE::log::error("Saved data is incompatible! Ignoring.");
+				logger::error("Saved data is incompatible! Ignoring.");
 				success = false;
 				break;
 			}
@@ -222,7 +222,7 @@ namespace EHKS
 				std::uint32_t elem;
 				if (!a_intfc->ReadRecordData(&elem, sizeof(elem)))
 				{
-					SKSE::log::error("Failed to load hotkey data element!");
+					logger::error("Failed to load hotkey data element!");
 					success = false;
 					break;
 				}
@@ -243,7 +243,7 @@ namespace EHKS
 			std::uint32_t currentIndex = 0;
 			if (DeserializeHotkeys(serializedData, currentIndex, hotkeys) && DeserializeHotkeys(serializedData, currentIndex, vampireHotkeys))
 			{
-				SKSE::log::info("Hotkeys loaded successfully.");
+				logger::info("Hotkeys loaded successfully.");
 			}
 			else
 			{
@@ -252,7 +252,7 @@ namespace EHKS
 		}
 		else if (success)
 		{
-			SKSE::log::info("No saved hotkey data found.");
+			logger::info("No saved hotkey data found.");
 		}
 
 		if (!success)

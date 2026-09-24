@@ -193,7 +193,7 @@ namespace EHKS
 		bool removed = a_isVampire ? hotkeyManager->RemoveVampireHotkey(a_hotkey) : hotkeyManager->RemoveHotkey(a_hotkey);
 		if (!removed)
 		{
-			SKSE::log::warn("Failed to remove the hotkey, it no longer exists.");
+			logger::warn("Failed to remove the hotkey, it no longer exists.");
 		}
 
 		// Only now that the list has actually changed is there a new snapshot worth taking.
@@ -204,7 +204,7 @@ namespace EHKS
 	{
 		if (!HotkeyManager::GetSingleton()->SetEquipMode(a_hotkey, a_equipMode))
 		{
-			SKSE::log::warn("Failed to set the equip mode, the hotkey no longer exists.");
+			logger::warn("Failed to set the equip mode, the hotkey no longer exists.");
 		}
 		g_refreshPending = true;
 	}

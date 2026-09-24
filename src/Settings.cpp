@@ -2,6 +2,8 @@
 
 #include <ModConfigUI/Binding.h>
 
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <SimpleIni.h>
 
 namespace
@@ -11,14 +13,14 @@ namespace
 	void IniSection(CSimpleIniA& a_ini, const char* a_section, const char* a_comment = nullptr)
 	{
 		a_ini.SetValue(a_section, nullptr, nullptr, a_comment);
-		SKSE::log::info("[{}]", a_section);
+		logger::info("[{}]", a_section);
 	}
 
 	bool IniGetBool(CSimpleIniA& a_ini, const char* a_section, const char* a_key, bool a_default, const char* a_comment = nullptr)
 	{
 		bool val = a_ini.GetBoolValue(a_section, a_key, a_default);
 		a_ini.SetBoolValue(a_section, a_key, val, a_comment, true);
-		SKSE::log::info("  {}: {}", a_key, val);
+		logger::info("  {}: {}", a_key, val);
 		return val;
 	}
 
@@ -26,7 +28,7 @@ namespace
 	{
 		std::uint32_t val = static_cast<std::uint32_t>(a_ini.GetLongValue(a_section, a_key, a_default));
 		a_ini.SetLongValue(a_section, a_key, val, a_comment, false, true);
-		SKSE::log::info("  {}: {}", a_key, val);
+		logger::info("  {}: {}", a_key, val);
 		return val;
 	}
 
@@ -34,7 +36,7 @@ namespace
 	{
 		std::string val = a_ini.GetValue(a_section, a_key, a_default);
 		a_ini.SetValue(a_section, a_key, val.c_str(), a_comment, true);
-		SKSE::log::info("  {}: {}", a_key, val);
+		logger::info("  {}: {}", a_key, val);
 		return val;
 	}
 }
@@ -101,7 +103,7 @@ namespace EHKS
 			{
 				if (!substr.empty())
 				{
-					SKSE::log::warn("Ignoring '{}' in sWhitelist, it is not a button number.", substr);
+					logger::warn("Ignoring '{}' in sWhitelist, it is not a button number.", substr);
 				}
 				continue;
 			}
@@ -109,7 +111,7 @@ namespace EHKS
 			Settings::Button button = GetButtonObj(key);
 			if (button.inputDevice == RE::INPUT_DEVICES::kNone)
 			{
-				SKSE::log::warn("Ignoring {} in sWhitelist, it is not a button.", key);
+				logger::warn("Ignoring {} in sWhitelist, it is not a button.", key);
 				continue;
 			}
 
@@ -128,7 +130,7 @@ namespace EHKS
 		ini.SetUnicode();
 		ini.LoadFile(INI_PATH);
 
-		SKSE::log::info("Loading settings from: {}", std::filesystem::absolute(INI_PATH).string());
+		logger::info("Loading settings from: {}", std::filesystem::absolute(INI_PATH).string());
 
 		IniSection(ini, "GENERAL");
 		std::uint32_t assignmentKey = IniGetUInt(ini, "GENERAL", "iAssignmentKey", ASSIGNMENT_KEY_DEFAULT_VALUE, "# Hold this key while clicking an item in the Favorites menu to assign it a hotkey.\n# The value is a button code: keyboard keys use their DirectInput scan code, mouse buttons start at 256 and controller buttons at 266. The easiest way to change it is the in-game settings menu.\n# Example: iAssignmentKey = 45 is the 'X' key.\n# Default value is 29, which is the left control key.");
@@ -146,7 +148,7 @@ namespace EHKS
 
 		settings->enforceWhitelist = IniGetBool(ini, "WHITELIST", "bEnforceWhitelist", ENFORCE_WHITELIST_DEFAULT_VALUE, "# When enabled, only whitelisted buttons can be assigned.\n# The assignment key is disabled, and its hint is hidden in the Favorites menu.\n# Default is false (disabled)");
 
-		SKSE::log::info("Settings loaded.");
+		logger::info("Settings loaded.");
 
 		ini.SaveFile(INI_PATH);
 	}
@@ -163,7 +165,7 @@ namespace EHKS
 		SI_Error result = ini.LoadFile(INI_PATH);
 		if (result < 0)
 		{
-			SKSE::log::error("Failed to open {} for writing, the settings were not saved.", INI_PATH);
+			logger::error("Failed to open {} for writing, the settings were not saved.", INI_PATH);
 			return;
 		}
 
@@ -189,11 +191,11 @@ namespace EHKS
 		result = ini.SaveFile(INI_PATH);
 		if (result < 0)
 		{
-			SKSE::log::error("Failed to save the settings to {}.", INI_PATH);
+			logger::error("Failed to save the settings to {}.", INI_PATH);
 			return;
 		}
 
-		SKSE::log::info("Settings saved.");
+		logger::info("Settings saved.");
 	}
 
 	void RestoreDefaults()

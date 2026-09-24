@@ -6,7 +6,7 @@ namespace EHKS
 	class FavoritesHandlerEx : public RE::FavoritesHandler
 	{
 	public:
-		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 05
+		bool ProcessButton_Hook(RE::ButtonEvent* a_event);  // 07
 
 		static void InstallHook();
 
